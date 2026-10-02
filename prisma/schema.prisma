@@ -1,0 +1,111 @@
+// Personal lead-finder data model.
+// SQLite for zero-setup local use. Swap the datasource to Postgres later
+// if this ever needs to run somewhere other than your own machine.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// One row per business discovered via OSM. Only businesses that failed the
+// "has a working website" check are ever inserted here — see
+// src/lib/normalize.ts.
+model Lead {
+  id               String   @id @default(cuid())
+  osmId            String   @unique // e.g. "node/123456" or "way/98765"
+  source           String   @default("osm")
+
+  name             String
+  category         String // dentist | real_estate | lawyer | law_firm | other
+  address          String?
+  phone            String? // as found
+  phoneNormalized  String? // E.164, used for de-dup and DNC matching
+  websiteRaw       String? // whatever was in the listing, if anything (kept for audit)
+  openingHours     String?
+  lat              Float?
+  lon              Float?
+  mapsUrl          String? // openstreetmap.org link built from osmId
+
+  score            Int      @default(0)
+  scoreFlags       String? // JSON array of strings, e.g. ["no_phone","sparse_listing"]
+
+  // NEW -> QUALIFIED -> DRAFTED -> APPROVED -> SENT -> REPLIED -> WON -> CLOSED
+  // (or DNC at any point)
+  status           String   @default("NEW")
+  notes            String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  drafts           Draft[]
+  events           Event[]
+
+  @@index([status])
+  @@index([category])
+  @@index([phoneNormalized])
+}
+
+// Generated outreach copy for a lead. Nothing with status DRAFT or APPROVED
+// is ever transmitted anywhere by this app — sending is a manual, logged
+// action taken by you (see README "Sending workflow").
+model Draft {
+  id        String    @id @default(cuid())
+  leadId    String
+  lead      Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  variant   String // ULTRA_SHORT | NORMAL | VALUE_FIRST
+  channel   String // EMAIL | DM | CALL_SMS_TASK
+  content   String
+
+  status    String    @default("DRAFT") // DRAFT | APPROVED | SENT | REPLIED | CLOSED
+  approvedAt DateTime?
+  sentAt    DateTime?
+
+  createdAt DateTime  @default(now())
+
+  @@index([leadId])
+  @@index([status])
+}
+
+// Anyone/any business that must never be contacted again, regardless of
+// what a future search turns up. Checked before a draft can be approved.
+model DoNotContact {
+  id        String   @id @default(cuid())
+  phone     String? // normalized E.164
+  email     String?
+  name      String?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([email])
+}
+
+// Append-only audit log: every search run, every draft generated, every
+// status change, every rate-limit backoff.
+model Event {
+  id        String   @id @default(cuid())
+  leadId    String?
+  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  type      String // SEARCH | DRAFT_GENERATED | STATUS_CHANGE | DNC_ADDED | RATE_LIMIT | ERROR
+  message   String?
+  createdAt DateTime @default(now())
+
+  @@index([type])
+}
+
+// One row per search you've run, so you can see what areas/categories
+// you've already covered.
+model SearchQuery {
+  id          String   @id @default(cuid())
+  area        String
+  radiusKm    Float
+  category    String
+  keywords    String?
+  resultCount Int      @default(0)
+  createdAt   DateTime @default(now())
+}

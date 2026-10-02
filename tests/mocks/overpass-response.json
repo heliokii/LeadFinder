@@ -1,0 +1,48 @@
+{
+  "elements": [
+    {
+      "type": "node",
+      "id": 111,
+      "lat": 13.7565,
+      "lon": 121.0583,
+      "tags": {
+        "name": "Bright Smile Dental",
+        "amenity": "dentist",
+        "phone": "+63 43 723 1234",
+        "addr:street": "P. Burgos St",
+        "addr:city": "Batangas City",
+        "opening_hours": "Mo-Sa 09:00-18:00"
+      }
+    },
+    {
+      "type": "node",
+      "id": 112,
+      "lat": 13.758,
+      "lon": 121.06,
+      "tags": {
+        "name": "City Dental Clinic",
+        "amenity": "dentist",
+        "website": "https://citydentalclinic.example",
+        "phone": "+63 43 723 5678"
+      }
+    },
+    {
+      "type": "way",
+      "id": 113,
+      "center": { "lat": 13.755, "lon": 121.059 },
+      "tags": {
+        "name": "Family Dentistry Batangas",
+        "amenity": "dentist"
+      }
+    },
+    {
+      "type": "node",
+      "id": 114,
+      "lat": 13.76,
+      "lon": 121.061,
+      "tags": {
+        "amenity": "dentist"
+      }
+    }
+  ]
+}
