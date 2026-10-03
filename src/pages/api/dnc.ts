@@ -1,9 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDb, safeEvent } from "@/lib/db";
 import { normalizePhone } from "@/lib/normalize";
 import { DEFAULT_COUNTRY } from "@/lib/config";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    await ensureDb();
+  } catch (err) {
+    return res.status(500).json({ error: err instanceof Error ? err.message : "Database unavailable" });
+  }
+
   if (req.method === "GET") {
     const entries = await prisma.doNotContact.findMany({ orderBy: { createdAt: "desc" } });
     return res.status(200).json({ entries });
@@ -17,12 +23,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const entry = await prisma.doNotContact.create({
       data: {
         phone: phone ? normalizePhone(phone, country || DEFAULT_COUNTRY) ?? phone : undefined,
-        email,
-        name,
-        reason,
+        email: typeof email === "string" && email.trim() ? email.trim() : undefined,
+        name: typeof name === "string" && name.trim() ? name.trim() : undefined,
+        reason: typeof reason === "string" && reason.trim() ? reason.trim() : undefined,
       },
     });
-    await prisma.event.create({ data: { type: "DNC_ADDED", message: name || phone || email } });
+    await safeEvent({ type: "DNC_ADDED", message: name || phone || email });
     return res.status(201).json({ entry });
   }
 

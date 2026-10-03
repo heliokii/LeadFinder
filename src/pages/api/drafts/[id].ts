@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDb, safeEvent } from "@/lib/db";
 
 const VALID_STATUSES = ["DRAFT", "APPROVED", "SENT", "REPLIED", "CLOSED"];
 
@@ -12,12 +12,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: `status must be one of ${VALID_STATUSES.join(", ")}` });
   }
 
+  try {
+    await ensureDb();
+  } catch (err) {
+    return res.status(500).json({ error: err instanceof Error ? err.message : "Database unavailable" });
+  }
+
   const draft = await prisma.draft.findUnique({ where: { id }, include: { lead: true } });
   if (!draft) return res.status(404).json({ error: "Draft not found" });
 
   // Hard gate: this app will not let you mark something SENT for a lead
   // that landed on the DNC list after the draft was written.
   if (status === "SENT") {
+    if (draft.lead.status === "DNC") {
+      return res.status(409).json({ error: "This lead is on the do-not-contact list." });
+    }
     if (draft.lead.phoneNormalized) {
       const dnc = await prisma.doNotContact.findFirst({ where: { phone: draft.lead.phoneNormalized } });
       if (dnc) return res.status(409).json({ error: "This contact is on the do-not-contact list." });
@@ -36,8 +45,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (status === "SENT") {
     await prisma.lead.update({ where: { id: draft.leadId }, data: { status: "SENT" } });
   }
-  await prisma.event.create({
-    data: { leadId: draft.leadId, type: "STATUS_CHANGE", message: `draft ${id} -> ${status}` },
+  await safeEvent({
+    leadId: draft.leadId, type: "STATUS_CHANGE", message: `draft ${id} -> ${status}`,
   });
 
   return res.status(200).json({ draft: updated });

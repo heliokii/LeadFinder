@@ -7,6 +7,10 @@ generator client {
 }
 
 datasource db {
+  // SQLite for zero-setup local use (DATABASE_URL=file:./dev.db resolves
+  // to prisma/dev.db). On Vercel the filesystem is read-only except /tmp,
+  // so production must set DATABASE_URL=file:/tmp/leadfinder.db (ephemeral
+  // demo data) — see .env.example and vercel.json.
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }

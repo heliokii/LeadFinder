@@ -1,11 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDb, safeEvent } from "@/lib/db";
 import { geocodeArea, searchBusinesses, buildOsmMapsUrl, type BusinessCategory } from "@/lib/osm";
 import { hasNoWebsite, normalizePhone } from "@/lib/normalize";
 import { DEFAULT_COUNTRY } from "@/lib/config";
 import { scoreLead } from "@/lib/scoring";
 
 const VALID_CATEGORIES: BusinessCategory[] = ["dentist", "real_estate", "lawyer", "law_firm"];
+
+export const config = {
+  api: {
+    // OSM search can take 10-30s (Nominatim + Overpass + DNS checks).
+    responseLimit: false,
+  },
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Use POST" });
@@ -18,17 +25,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!VALID_CATEGORIES.includes(category)) {
     return res.status(400).json({ error: `category must be one of ${VALID_CATEGORIES.join(", ")}` });
   }
-  const radius = Number(radiusKm) || 5;
-  const defaultCountry = (country as string) || DEFAULT_COUNTRY;
+  const radiusRaw = Number(radiusKm);
+  const radius = Number.isFinite(radiusRaw) ? Math.min(50, Math.max(1, radiusRaw)) : 5;
+  const defaultCountry = (typeof country === "string" && country.trim()) || DEFAULT_COUNTRY;
 
   try {
+    await ensureDb();
     const geo = await geocodeArea(area);
     const raw = await searchBusinesses({
       lat: geo.lat,
       lon: geo.lon,
       radiusKm: radius,
       category,
-      keywords,
+      keywords: typeof keywords === "string" ? keywords : undefined,
     });
 
     const created: string[] = [];
@@ -83,13 +92,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     await prisma.searchQuery.create({
-      data: { area, radiusKm: radius, category, keywords, resultCount: created.length },
+      data: { area, radiusKm: radius, category, keywords: typeof keywords === "string" ? keywords : null, resultCount: created.length },
     });
-    await prisma.event.create({
-      data: {
-        type: "SEARCH",
-        message: `area="${area}" category=${category} radiusKm=${radius}: ${created.length} no-website leads, ${skippedHasWebsite.length} skipped (has website)`,
-      },
+    await safeEvent({
+      type: "SEARCH",
+      message: `area="${area}" category=${category} radiusKm=${radius}: ${created.length} no-website leads, ${skippedHasWebsite.length} skipped (has website)`,
     });
 
     return res.status(200).json({
@@ -100,7 +107,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    await prisma.event.create({ data: { type: "ERROR", message: `search: ${message}` } });
+    try {
+      await ensureDb();
+      await safeEvent({ type: "ERROR", message: `search: ${message}` });
+    } catch {
+      // DB itself unavailable — still return the original error.
+    }
     return res.status(500).json({ error: message });
   }
 }

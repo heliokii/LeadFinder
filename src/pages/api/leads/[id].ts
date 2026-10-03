@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDb, safeEvent } from "@/lib/db";
 
 const VALID_STATUSES = [
   "NEW",
@@ -16,6 +16,12 @@ const VALID_STATUSES = [
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const id = req.query.id as string;
 
+  try {
+    await ensureDb();
+  } catch (err) {
+    return res.status(500).json({ error: err instanceof Error ? err.message : "Database unavailable" });
+  }
+
   if (req.method === "GET") {
     const lead = await prisma.lead.findUnique({
       where: { id },
@@ -31,23 +37,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: `status must be one of ${VALID_STATUSES.join(", ")}` });
     }
 
-    const lead = await prisma.lead.update({
-      where: { id },
-      data: { ...(status ? { status } : {}), ...(notes !== undefined ? { notes } : {}) },
-    });
+    let lead;
+    try {
+      lead = await prisma.lead.update({
+        where: { id },
+        data: { ...(status ? { status } : {}), ...(notes !== undefined ? { notes } : {}) },
+      });
+    } catch {
+      return res.status(404).json({ error: "Not found" });
+    }
 
     if (status) {
-      await prisma.event.create({
-        data: { leadId: id, type: "STATUS_CHANGE", message: `-> ${status}` },
+      await safeEvent({
+        leadId: id, type: "STATUS_CHANGE", message: `-> ${status}`,
       });
     }
 
     // Moving a lead to DNC also files the do-not-contact record so future
     // searches skip it automatically.
     if (status === "DNC" && lead.phoneNormalized) {
-      await prisma.doNotContact.create({
-        data: { phone: lead.phoneNormalized, name: lead.name, reason: "Marked DNC from lead detail" },
-      });
+      try {
+        await prisma.doNotContact.create({
+          data: { phone: lead.phoneNormalized, name: lead.name, reason: "Marked DNC from lead detail" },
+        });
+      } catch {
+        // Already filed (e.g. duplicate phone) — not fatal.
+      }
     }
 
     return res.status(200).json({ lead });

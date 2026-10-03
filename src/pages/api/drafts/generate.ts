@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDb, safeEvent } from "@/lib/db";
 import { generateAllVariants } from "@/lib/draftGenerator";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -7,6 +7,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { leadId, channel } = req.body ?? {};
   if (!leadId) return res.status(400).json({ error: "leadId is required" });
+
+  try {
+    await ensureDb();
+  } catch (err) {
+    return res.status(500).json({ error: err instanceof Error ? err.message : "Database unavailable" });
+  }
 
   const lead = await prisma.lead.findUnique({ where: { id: leadId } });
   if (!lead) return res.status(404).json({ error: "Lead not found" });
@@ -24,8 +30,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   );
 
   await prisma.lead.update({ where: { id: leadId }, data: { status: "DRAFTED" } });
-  await prisma.event.create({
-    data: { leadId, type: "DRAFT_GENERATED", message: `${drafts.length} variants` },
+  await safeEvent({
+    leadId, type: "DRAFT_GENERATED", message: `${drafts.length} variants`,
   });
 
   return res.status(200).json({ drafts });

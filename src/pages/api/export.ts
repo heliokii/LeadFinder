@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDb } from "@/lib/db";
 
 function csvEscape(val: unknown): string {
   const s = val == null ? "" : String(val);
@@ -8,6 +8,12 @@ function csvEscape(val: unknown): string {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).json({ error: "Use GET" });
+
+  try {
+    await ensureDb();
+  } catch (err) {
+    return res.status(500).json({ error: err instanceof Error ? err.message : "Database unavailable" });
+  }
 
   const leads = await prisma.lead.findMany({ orderBy: { score: "desc" } });
 
