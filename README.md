@@ -1,9 +1,32 @@
 # lead-finder
 
+![Lead-Finder — design reference: laptop showing the no-website search hero](/LEADFINDER-1.jpg)
+
+> **Design reference:** `public/LEADFINDER-1.jpg` — laptop mockup of the search
+> hero ("Find businesses without a website.", area / category / radius /
+> keywords + `SEARCH →`). The live UI in `src/pages/index.tsx` follows this
+> layout. Also see the deployed reference: https://leadfinder-now.vercel.app/leads
+
 A personal, single-user tool: find local service businesses with no website
 listed on OpenStreetMap, and draft (never auto-send) outreach offering to
 build them one. Everything that leaves your machine is something you
 manually approved and copy-pasted.
+
+## Key features
+
+- **Contactability scoring** — every saved lead gets a 0–100 score from
+  `scoreLead()` in `src/lib/scoring.ts` (has phone / hours / address, name
+  quality). Shown as a bar + number in `/leads` (`Score` in
+  `src/components/ui.tsx`) and sortable via `Best score`.
+- **Lead tracking & statuses** — pipeline `NEW → QUALIFIED → DRAFTED →
+  APPROVED → SENT → REPLIED → WON → CLOSED` (plus `DNC` at any point),
+  rendered by `Pipeline` in `src/components/ui.tsx`, filtered per status in
+  `/leads`, and advanced on `/leads/[id]`.
+- **Search & filtering** — `/leads` filters by name / address / phone text
+  search, category (Dentist, Real Estate, Lawyer, Law Firm), and status, with
+  `Best score / Newest / Name A–Z` sorting against `GET /api/leads`.
+- **Data export** — one-click **Export CSV** in `/leads` hits
+  `GET /api/export` (`src/pages/api/export.ts`) and downloads `leads.csv`.
 
 ## What changed from the original brief
 
