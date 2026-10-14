@@ -325,6 +325,8 @@ tbody tr { transition: background 0.15s ease; }
 tbody tr:hover td { background: var(--paper); }
 tbody tr:last-child td { border-bottom: none; }
 tr.row-link { cursor: pointer; }
+.history-actions { width: 1%; white-space: nowrap; }
+.history-actions button { padding: 8px 12px; font-size: 0.68rem; }
 
 .score-cell { display: flex; align-items: center; gap: 8px; min-width: 110px; }
 .score-track { flex: 1; height: 4px; background: var(--line); border-radius: 99px; overflow: hidden; min-width: 44px; }
