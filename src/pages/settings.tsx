@@ -28,7 +28,7 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <SectionLabel n={4} total="04" label="Settings — .env configuration" />
+      <SectionLabel n={6} total="06" label="Settings — .env configuration" />
       <h1>Settings.</h1>
       <p className="lede">
         All configuration lives in your <code>.env</code> file, not in the database — so nothing

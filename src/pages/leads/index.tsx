@@ -108,7 +108,7 @@ export default function LeadsPage() {
 
   return (
     <div>
-      <SectionLabel n={2} total="04" label={`Leads — ${leads.length} saved`} />
+      <SectionLabel n={2} total="06" label={`Leads — ${leads.length} saved`} />
       <h1>Leads.</h1>
       <p className="lede">No-website businesses, scored by how contactable they look. Click a row to work it.</p>
       {error && <div className="alert-error" role="alert">{error}</div>}
@@ -174,7 +174,7 @@ export default function LeadsPage() {
         </div>
       ) : (
         <div className="table-wrap reveal in">
-          <table>
+          <table className="leads-table">
             <thead>
               <tr>
                 <th><input type="checkbox" aria-label="Select visible leads" checked={allVisibleSelected} onChange={toggleAllVisible} /></th>

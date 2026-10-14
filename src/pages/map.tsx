@@ -23,7 +23,7 @@ export default function MapPage() {
     }).catch((err) => setError(err instanceof Error ? err.message : "Could not load map leads"));
   }, [status, category]);
   return <div>
-    <SectionLabel n={4} total="04" label="Lead map" />
+    <SectionLabel n={3} total="06" label="Lead map" />
     <h1>Lead map.</h1>
     <p className="lede">Explore saved leads by location.</p>
     <div className="filters" style={{ marginTop: 20 }}>

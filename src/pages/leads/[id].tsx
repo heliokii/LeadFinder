@@ -101,7 +101,7 @@ export default function LeadDetailPage() {
   if (!lead) {
     return (
       <div>
-        <SectionLabel n={2} total="04" label="Lead detail" />
+        <SectionLabel n={2} total="06" label="Lead detail" />
         <div className="skel" aria-label="Loading lead"><i style={{ width: "35%" }} /><i style={{ width: "80%" }} /><i style={{ width: "55%" }} /></div>
       </div>
     );
@@ -246,7 +246,7 @@ export default function LeadDetailPage() {
 
   return (
     <div>
-      <SectionLabel n={2} total="04" label="Lead detail" />
+      <SectionLabel n={2} total="06" label="Lead detail" />
       <BackLink href="/leads">All leads</BackLink>
 
       <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginTop: 10, flexWrap: "wrap" }}>

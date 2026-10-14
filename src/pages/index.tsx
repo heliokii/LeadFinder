@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { SectionLabel, useToast } from "@/components/ui";
 import { CATEGORY_CATALOG } from "@/lib/categories";
@@ -11,6 +11,7 @@ export default function SearchPage() {
   const [category, setCategory] = useState<string>("");
   const [categoryQuery, setCategoryQuery] = useState<string>("");
   const [categoryOpen, setCategoryOpen] = useState(false);
+  const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(null);
   const [keywords, setKeywords] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<null | {
@@ -20,25 +21,32 @@ export default function SearchPage() {
     skippedHasWebsiteCount: number;
   }>(null);
   const [error, setError] = useState<string | null>(null);
+  const searchController = useRef<AbortController | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setResult(null);
+    searchController.current?.abort();
+    searchController.current = new AbortController();
     try {
       const res = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ area, radiusKm, category, keywords: keywords || undefined }),
+        signal: searchController.current.signal,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Search failed");
       setResult(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      if (!(err instanceof DOMException && err.name === "AbortError")) {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+      }
     } finally {
       setLoading(false);
+      searchController.current = null;
     }
   }
 
@@ -55,11 +63,12 @@ export default function SearchPage() {
     setCategory(item.value);
     setCategoryQuery(item.label);
     setCategoryOpen(false);
+    setActiveCategoryIndex(null);
   }
 
   return (
     <div>
-      <SectionLabel n={1} total="04" label="Search — find no-website businesses" />
+      <SectionLabel n={1} total="06" label="Search — find no-website businesses" />
 
       <div className="hero-kicker">
         <span>OpenStreetMap · free · no API key</span>
@@ -97,11 +106,13 @@ export default function SearchPage() {
                 aria-expanded={categoryOpen}
                 aria-controls="category-suggestions"
                 aria-autocomplete="list"
+                aria-activedescendant={categoryOpen && activeCategoryIndex !== null && categoryMatches[activeCategoryIndex] ? `category-option-${categoryMatches[activeCategoryIndex].value}` : undefined}
                 placeholder="Search categories…"
                 value={categoryQuery}
                 onFocus={(e) => {
                   e.currentTarget.select();
                   setCategoryOpen(true);
+                  setActiveCategoryIndex(categoryMatches.length ? 0 : null);
                 }}
                 onBlur={() => setTimeout(() => setCategoryOpen(false), 120)}
                 onChange={(e) => {
@@ -110,13 +121,28 @@ export default function SearchPage() {
                   const exact = CATEGORY_CATALOG.find((item) => item.label.toLowerCase() === value.trim().toLowerCase() || item.value === value.trim().toLowerCase());
                   setCategory(exact?.value ?? "");
                   setCategoryOpen(true);
+                  setActiveCategoryIndex(value.trim() ? 0 : null);
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && categoryMatches[0]) {
+                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                     e.preventDefault();
-                    chooseCategory(categoryMatches[0].value);
+                    if (!categoryMatches.length) return;
+                    setCategoryOpen(true);
+                    setActiveCategoryIndex((current) => {
+                      const next = current ?? 0;
+                      return e.key === "ArrowDown"
+                        ? (next + 1) % categoryMatches.length
+                        : (next - 1 + categoryMatches.length) % categoryMatches.length;
+                    });
                   }
-                  if (e.key === "Escape") setCategoryOpen(false);
+                  if (e.key === "Enter" && categoryMatches[activeCategoryIndex ?? 0]) {
+                    e.preventDefault();
+                    chooseCategory(categoryMatches[activeCategoryIndex ?? 0].value);
+                  }
+                  if (e.key === "Escape") {
+                    setCategoryOpen(false);
+                    setActiveCategoryIndex(null);
+                  }
                 }}
                 autoComplete="off"
               />
@@ -129,13 +155,14 @@ export default function SearchPage() {
                   setCategoryQuery("");
                   setCategory("");
                   setCategoryOpen(true);
+                  setActiveCategoryIndex(0);
                 }}
               >
                 ×
               </button>}
               {categoryOpen && <div className="category-suggestions" id="category-suggestions" role="listbox">
-                {categoryMatches.length > 0 ? categoryMatches.map((item) => (
-                  <button key={item.value} type="button" role="option" aria-selected={category === item.value} onMouseDown={(e) => e.preventDefault()} onClick={() => chooseCategory(item.value)}>
+                {categoryMatches.length > 0 ? categoryMatches.map((item, index) => (
+                  <button key={item.value} id={`category-option-${item.value}`} type="button" role="option" aria-selected={category === item.value} data-active={activeCategoryIndex === index} onMouseDown={(e) => e.preventDefault()} onClick={() => chooseCategory(item.value)}>
                     <span>{item.label}</span><small>{item.hint}</small>
                   </button>
                 )) : <div className="category-empty">No matching categories</div>}
@@ -172,6 +199,11 @@ export default function SearchPage() {
               {loading ? "Searching OSM…" : "Search"}
               {!loading && <span className="arrow" aria-hidden="true">→</span>}
             </button>
+            {loading && (
+              <button type="button" className="secondary search-cancel" onClick={() => searchController.current?.abort()}>
+                Cancel
+              </button>
+            )}
             {loading && (
               <p className="muted" style={{ marginTop: 10 }}>
                 Querying Nominatim → Overpass… this can take 10–30s. Please wait.

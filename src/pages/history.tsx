@@ -41,7 +41,7 @@ export default function HistoryPage() {
   }
 
   return <div>
-    <SectionLabel n={3} total="04" label="Search history" />
+      <SectionLabel n={4} total="06" label="Search history" />
     <h1>Search history.</h1>
     <p className="lede">Areas and categories you have already covered.</p>
     {error && <div className="alert-error" role="alert">{error}</div>}
