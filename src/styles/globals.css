@@ -217,6 +217,25 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 1px var(--ink);
 }
 
+input[type="checkbox"] {
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+input[type="checkbox"]:focus,
+input[type="checkbox"]:focus-visible {
+  border-color: transparent;
+  box-shadow: none;
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
 /* segmented category picker */
 .seg { display: flex; flex-wrap: wrap; gap: 8px; }
 .seg button {
