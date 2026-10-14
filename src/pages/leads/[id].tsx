@@ -356,32 +356,41 @@ export default function LeadDetailPage() {
       )}
 
       <h2>Follow-ups</h2>
-      <form className="card stack" onSubmit={createFollowUp}>
+      <form className="card stack follow-up-form" onSubmit={createFollowUp}>
         <div className="row">
           <div><label htmlFor="follow-up-due">Due</label><input id="follow-up-due" type="datetime-local" value={followUpDueAt} onChange={(e) => setFollowUpDueAt(e.target.value)} required /></div>
           <div><label htmlFor="follow-up-note">Note</label><input id="follow-up-note" value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)} maxLength={500} required placeholder="Call back about proposal" /></div>
         </div>
-        <button type="submit" disabled={busy !== null}>Add follow-up</button>
+        <button className="follow-up-submit" type="submit" disabled={busy !== null}>
+          {busy === "followup" && <span className="spin" aria-hidden="true" />}
+          Add follow-up
+        </button>
       </form>
-      {lead.followUps.length > 0 && <div className="stack" style={{ marginTop: 12 }}>
+      {lead.followUps.length > 0 && <div className="follow-up-list" aria-label="Scheduled follow-ups">
         {lead.followUps.map((followUp) => (
-          <div className="card" key={followUp.id} style={{ opacity: followUp.completedAt ? 0.6 : 1 }}>
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <article className={`card follow-up-item${followUp.completedAt ? " is-complete" : ""}`} key={followUp.id}>
+            <div className="follow-up-copy">
               <strong>{new Date(followUp.dueAt).toLocaleString()}</strong>
               <span className="muted">{followUp.note}</span>
-              <span style={{ marginLeft: "auto" }}>
-                <button className="secondary" onClick={() => completeFollowUp(followUp.id, !followUp.completedAt)}>{followUp.completedAt ? "Reopen" : "Complete"}</button>
-                <a className="btn secondary" href={`/api/followups/${followUp.id}/calendar`} style={{ marginLeft: 8 }}>ICS</a>
-              </span>
             </div>
-          </div>
+            <div className="follow-up-actions">
+              <button className="secondary" disabled={busy !== null} onClick={() => completeFollowUp(followUp.id, !followUp.completedAt)}>{followUp.completedAt ? "Reopen" : "Complete"}</button>
+              <a className="btn secondary" href={`/api/followups/${followUp.id}/calendar`}>ICS</a>
+            </div>
+          </article>
         ))}
       </div>}
 
       <h2>Activity</h2>
-      <div className="stack">
-        {lead.events.map((event) => <div className="muted" key={event.id}>{new Date(event.createdAt).toLocaleString()} · {event.type}{event.message ? ` · ${event.message}` : ""}</div>)}
-      </div>
+      <ol className="activity-list" aria-label="Activity timeline">
+        {lead.events.map((event) => (
+          <li className="activity-row" key={event.id}>
+            <time dateTime={event.createdAt}>{new Date(event.createdAt).toLocaleString()}</time>
+            <span className="activity-type">{event.type}</span>
+            {event.message ? <span className="activity-message">{event.message}</span> : null}
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

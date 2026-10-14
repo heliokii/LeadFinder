@@ -160,10 +160,30 @@ p.lede { color: var(--muted); margin-top: 0; max-width: 60ch; font-size: 1.02rem
 .card + .card { margin-top: 16px; }
 
 
-form.stack { display: flex; flex-direction: column; gap: 14px; max-width: 560px; }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+form.stack { max-width: 560px; }
 .row { display: flex; gap: 12px; }
 .row > * { flex: 1; }
 @media (max-width: 560px) { .row { flex-direction: column; } }
+
+.follow-up-form { width: min(100%, 560px); }
+.follow-up-submit { width: 100%; justify-content: flex-start; }
+.follow-up-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; max-width: 760px; }
+.follow-up-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; }
+.follow-up-item.is-complete { opacity: 0.58; }
+.follow-up-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.follow-up-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.activity-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 7px; max-width: 900px; }
+.activity-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 7px; color: var(--muted); font-size: 0.87rem; line-height: 1.45; }
+.activity-row time, .activity-type { white-space: nowrap; }
+.activity-type { font-family: ui-monospace, Menlo, monospace; font-size: 0.78rem; letter-spacing: 0.02em; }
+.activity-message { overflow-wrap: anywhere; }
+
+@media (max-width: 560px) {
+  .follow-up-item { align-items: flex-start; flex-direction: column; }
+  .follow-up-actions { width: 100%; }
+  .follow-up-actions > * { flex: 1; justify-content: center; }
+}
 
 label {
   font-family: ui-monospace, Menlo, monospace;
@@ -186,6 +206,7 @@ input, select, textarea {
   color: var(--ink);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+input, select, button, .btn { min-height: 42px; }
 input::placeholder, textarea::placeholder { color: var(--unlit); }
 input:focus, select:focus, textarea:focus {
   outline: none;
