@@ -99,7 +99,10 @@ export default function SearchPage() {
                 aria-autocomplete="list"
                 placeholder="Search categories…"
                 value={categoryQuery}
-                onFocus={() => setCategoryOpen(true)}
+                onFocus={(e) => {
+                  e.currentTarget.select();
+                  setCategoryOpen(true);
+                }}
                 onBlur={() => setTimeout(() => setCategoryOpen(false), 120)}
                 onChange={(e) => {
                   const value = e.target.value;
@@ -117,6 +120,19 @@ export default function SearchPage() {
                 }}
                 autoComplete="off"
               />
+              {categoryQuery && <button
+                type="button"
+                className="category-clear"
+                aria-label="Clear category"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setCategoryQuery("");
+                  setCategory("");
+                  setCategoryOpen(true);
+                }}
+              >
+                ×
+              </button>}
               {categoryOpen && <div className="category-suggestions" id="category-suggestions" role="listbox">
                 {categoryMatches.length > 0 ? categoryMatches.map((item) => (
                   <button key={item.value} type="button" role="option" aria-selected={category === item.value} onMouseDown={(e) => e.preventDefault()} onClick={() => chooseCategory(item.value)}>
