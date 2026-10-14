@@ -18,18 +18,13 @@
  */
 
 import { osmRateLimiter } from "./rateLimiter";
+import { CATEGORY_CATALOG, type BusinessCategory } from "./categories";
 
-export type BusinessCategory = "dentist" | "real_estate" | "lawyer" | "law_firm";
-
-// Maps our categories to OSM tag queries. law_firm and lawyer share the
-// same underlying tag (OSM doesn't distinguish solo practitioners from
-// firms) — see README for how the app tells them apart heuristically.
-const CATEGORY_TAGS: Record<BusinessCategory, string[]> = {
-  dentist: ["amenity=dentist", "healthcare=dentist"],
-  lawyer: ["office=lawyer"],
-  law_firm: ["office=lawyer"],
-  real_estate: ["office=estate_agent"],
-};
+// Maps the curated catalog to OSM tag queries. Some categories share an
+// underlying tag because OSM does not distinguish those businesses further.
+const CATEGORY_TAGS: Record<BusinessCategory, readonly string[]> = Object.fromEntries(
+  CATEGORY_CATALOG.map((category) => [category.value, category.tags])
+) as unknown as Record<BusinessCategory, readonly string[]>;
 
 export interface GeocodeResult {
   lat: number;
@@ -84,7 +79,7 @@ export async function geocodeArea(area: string): Promise<GeocodeResult> {
   };
 }
 
-function buildOverpassQuery(lat: number, lon: number, radiusM: number, tags: string[]): string {
+function buildOverpassQuery(lat: number, lon: number, radiusM: number, tags: readonly string[]): string {
   // `out center;` gives us a lat/lon for ways/relations too, not just nodes.
   const clauses = tags
     .map((tag) => {

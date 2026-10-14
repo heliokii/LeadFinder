@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { Score, SectionLabel, useReveal, useToast } from "@/components/ui";
+import { CATEGORY_CATALOG } from "@/lib/categories";
 
 interface LeadRow {
   id: string;
@@ -121,10 +122,7 @@ export default function LeadsPage() {
           <label htmlFor="f-cat">Category</label>
           <select id="f-cat" value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value="">All categories</option>
-            <option value="dentist">Dentist</option>
-            <option value="real_estate">Real estate</option>
-            <option value="lawyer">Lawyer</option>
-            <option value="law_firm">Law firm</option>
+            {CATEGORY_CATALOG.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
         </div>
         <div>

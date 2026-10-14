@@ -1,20 +1,16 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { SectionLabel, useToast } from "@/components/ui";
-
-const CATEGORIES = [
-  { value: "dentist", label: "Dentists", hint: "amenity=dentist" },
-  { value: "real_estate", label: "Real estate", hint: "office=estate_agent" },
-  { value: "lawyer", label: "Lawyers", hint: "office=lawyer" },
-  { value: "law_firm", label: "Law firms", hint: "office=lawyer" },
-];
+import { CATEGORY_CATALOG } from "@/lib/categories";
 
 export default function SearchPage() {
   const router = useRouter();
   useToast();
   const [area, setArea] = useState("");
   const [radiusKm, setRadiusKm] = useState(5);
-  const [category, setCategory] = useState("dentist");
+  const [category, setCategory] = useState<string>("dentist");
+  const [categoryQuery, setCategoryQuery] = useState<string>(CATEGORY_CATALOG[0].label);
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const [keywords, setKeywords] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<null | {
@@ -44,6 +40,21 @@ export default function SearchPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  const selectedCategory = CATEGORY_CATALOG.find((item) => item.value === category);
+  const categoryMatches = CATEGORY_CATALOG.filter((item) => {
+    const query = categoryQuery.trim().toLowerCase();
+    if (!query) return true;
+    return [item.value, item.label, ...item.aliases].some((value) => value.toLowerCase().includes(query));
+  }).slice(0, 8);
+
+  function chooseCategory(value: string) {
+    const item = CATEGORY_CATALOG.find((candidate) => candidate.value === value);
+    if (!item) return;
+    setCategory(item.value);
+    setCategoryQuery(item.label);
+    setCategoryOpen(false);
   }
 
   return (
@@ -77,21 +88,44 @@ export default function SearchPage() {
               autoComplete="off"
             />
           </div>
-          <div>
-            <label id="cat-label">Category</label>
-            <div className="seg" role="group" aria-labelledby="cat-label">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  aria-pressed={category === c.value}
-                  title={c.hint}
-                  onClick={() => setCategory(c.value)}
-                >
-                  {c.label}
-                </button>
-              ))}
+          <div className="category-picker">
+            <label htmlFor="category-search">Category</label>
+            <div className="category-combobox">
+              <input
+                id="category-search"
+                role="combobox"
+                aria-expanded={categoryOpen}
+                aria-controls="category-suggestions"
+                aria-autocomplete="list"
+                placeholder="Search categories…"
+                value={categoryQuery}
+                onFocus={() => setCategoryOpen(true)}
+                onBlur={() => setTimeout(() => setCategoryOpen(false), 120)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setCategoryQuery(value);
+                  const exact = CATEGORY_CATALOG.find((item) => item.label.toLowerCase() === value.trim().toLowerCase() || item.value === value.trim().toLowerCase());
+                  setCategory(exact?.value ?? "");
+                  setCategoryOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && categoryMatches[0]) {
+                    e.preventDefault();
+                    chooseCategory(categoryMatches[0].value);
+                  }
+                  if (e.key === "Escape") setCategoryOpen(false);
+                }}
+                autoComplete="off"
+              />
+              {categoryOpen && <div className="category-suggestions" id="category-suggestions" role="listbox">
+                {categoryMatches.length > 0 ? categoryMatches.map((item) => (
+                  <button key={item.value} type="button" role="option" aria-selected={category === item.value} onMouseDown={(e) => e.preventDefault()} onClick={() => chooseCategory(item.value)}>
+                    <span>{item.label}</span><small>{item.hint}</small>
+                  </button>
+                )) : <div className="category-empty">No matching categories</div>}
+              </div>}
             </div>
+            <p className="category-hint">{selectedCategory?.hint ?? "Choose a category from the suggestions"}</p>
           </div>
           <div className="row">
             <div>
@@ -117,7 +151,7 @@ export default function SearchPage() {
             </div>
           </div>
           <div>
-            <button type="submit" disabled={loading || !area.trim()}>
+            <button type="submit" disabled={loading || !area.trim() || !category}>
               {loading && <span className="spin" aria-hidden="true" />}
               {loading ? "Searching OSM…" : "Search"}
               {!loading && <span className="arrow" aria-hidden="true">→</span>}

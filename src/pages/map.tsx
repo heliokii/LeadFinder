@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { SectionLabel } from "@/components/ui";
 import type { MapLead } from "@/components/LeadMap";
 import { STATUS_COLORS, STATUS_OPTIONS } from "@/lib/statusColors";
+import { CATEGORY_CATALOG } from "@/lib/categories";
 
 const LeadMap = dynamic(() => import("@/components/LeadMap"), { ssr: false, loading: () => <div className="skel" style={{ height: 520 }} /> });
 
@@ -27,7 +28,7 @@ export default function MapPage() {
     <p className="lede">Explore saved leads by location.</p>
     <div className="filters" style={{ marginTop: 20 }}>
       <div><label htmlFor="map-status">Status</label><select id="map-status" value={status} onChange={(e) => setStatus(e.target.value)}><option value="">All statuses</option>{STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}</select></div>
-      <div><label htmlFor="map-category">Category</label><select id="map-category" value={category} onChange={(e) => setCategory(e.target.value)}><option value="">All categories</option><option value="dentist">Dentist</option><option value="real_estate">Real estate</option><option value="lawyer">Lawyer</option><option value="law_firm">Law firm</option></select></div>
+      <div><label htmlFor="map-category">Category</label><select id="map-category" value={category} onChange={(e) => setCategory(e.target.value)}><option value="">All categories</option>{CATEGORY_CATALOG.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
     </div>
     {error && <div className="alert-error" role="alert">{error}</div>}
     <p className="muted">{leads.length} mapped leads</p>

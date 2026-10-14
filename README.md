@@ -23,7 +23,7 @@ manually approved and copy-pasted.
   rendered by `Pipeline` in `src/components/ui.tsx`, filtered per status in
   `/leads`, and advanced on `/leads/[id]`.
 - **Search & filtering** — `/leads` filters by name / address / phone text
-  search, category (Dentist, Real Estate, Lawyer, Law Firm), and status, with
+  search, a searchable business category catalog, and status, with
   `Best score / Newest / Name A–Z` sorting against `GET /api/leads`.
 - **Data export** — one-click **Export CSV** in `/leads` hits
   `GET /api/export` (`src/pages/api/export.ts`) and downloads `leads.csv`.
@@ -119,7 +119,8 @@ nothing in the current code expects one.
 
 ## Using it
 
-1. **Search** — type an area ("Lipa City, Batangas"), pick a category and
+1. **Search** — type an area ("Lipa City, Batangas"), search the curated
+   category catalog (with aliases and OSM hints), and
    radius, run it. New no-website leads get saved; ones that already have
    a working site are skipped and reported in the summary.
 2. **Leads** — filter/sort, open one, hit "Generate 3 draft variants."

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { SectionLabel, toast } from "@/components/ui";
+import { CATEGORY_CATALOG } from "@/lib/categories";
 
 export default function SettingsPage() {
   const [mode, setMode] = useState<"merge" | "replace">("merge");
@@ -46,9 +47,7 @@ export default function SettingsPage() {
         <div className="table-wrap">
         <table>
           <tbody>
-            <tr><td>Dentist</td><td className="mono">amenity=dentist</td></tr>
-            <tr><td>Real estate</td><td className="mono">office=estate_agent</td></tr>
-            <tr><td>Lawyer / law firm</td><td className="mono">office=lawyer</td></tr>
+            {CATEGORY_CATALOG.map((item) => <tr key={item.value}><td>{item.label}</td><td className="mono">{item.tags.join(" · ")}</td></tr>)}
           </tbody>
         </table>
         </div>
