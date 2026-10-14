@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma, ensureDb, safeEvent } from "@/lib/db";
-import { geocodeArea, searchBusinesses, buildOsmMapsUrl, type BusinessCategory } from "@/lib/osm";
+import { geocodeArea, searchBusinesses, buildOsmMapsUrl } from "@/lib/osm";
+import { CATEGORY_VALUES, type BusinessCategory } from "@/lib/categories";
 import { hasNoWebsite, normalizePhone } from "@/lib/normalize";
 import { DEFAULT_COUNTRY } from "@/lib/config";
 import { scoreLead } from "@/lib/scoring";
 
-const VALID_CATEGORIES: BusinessCategory[] = ["dentist", "real_estate", "lawyer", "law_firm"];
+const VALID_CATEGORIES: BusinessCategory[] = CATEGORY_VALUES;
 
 export const config = {
   api: {

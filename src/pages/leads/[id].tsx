@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import { BackLink, Pipeline, Score, SectionLabel, copyText, toast, useToast } from "@/components/ui";
+import { STATUS_COLORS } from "@/lib/statusColors";
 
 interface Draft {
   id: string;
@@ -8,6 +9,18 @@ interface Draft {
   content: string;
   status: string;
   channel: string;
+}
+interface FollowUp {
+  id: string;
+  dueAt: string;
+  note: string;
+  completedAt: string | null;
+}
+interface EventRow {
+  id: string;
+  type: string;
+  message: string | null;
+  createdAt: string;
 }
 interface LeadDetail {
   id: string;
@@ -22,6 +35,8 @@ interface LeadDetail {
   status: string;
   notes: string | null;
   drafts: Draft[];
+  followUps: FollowUp[];
+  events: EventRow[];
 }
 
 const NEXT: Record<string, string | null> = {
@@ -36,6 +51,29 @@ const NEXT: Record<string, string | null> = {
   DNC: null,
 };
 
+function formatAppDate(value: string) {
+  return new Date(value)
+    .toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+    .replace(",", " ·");
+}
+
+function formatEventType(value: string) {
+  return value.replaceAll("_", " ");
+}
+
+function parseStatusTransition(value: string | null) {
+  if (!value) return null;
+  const match = value.match(/^(.*?)\s*->\s*([A-Z_]+)$/);
+  return match ? { source: match[1].trim(), target: match[2] } : null;
+}
+
 export default function LeadDetailPage() {
   const router = useRouter();
   const id = router.query.id as string | undefined;
@@ -44,6 +82,10 @@ export default function LeadDetailPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [paymentMsg, setPaymentMsg] = useState<string | null>(null);
   const [confirmDnc, setConfirmDnc] = useState(false);
+  const [editDraftId, setEditDraftId] = useState<string | null>(null);
+  const [editDraftContent, setEditDraftContent] = useState("");
+  const [followUpNote, setFollowUpNote] = useState("");
+  const [followUpDueAt, setFollowUpDueAt] = useState("");
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -59,7 +101,7 @@ export default function LeadDetailPage() {
   if (!lead) {
     return (
       <div>
-        <SectionLabel n={2} total="04" label="Lead detail" />
+        <SectionLabel n={2} total="06" label="Lead detail" />
         <div className="skel" aria-label="Loading lead"><i style={{ width: "35%" }} /><i style={{ width: "80%" }} /><i style={{ width: "55%" }} /></div>
       </div>
     );
@@ -114,6 +156,61 @@ export default function LeadDetailPage() {
     });
   }
 
+  async function saveDraftContent(draftId: string) {
+    await run(draftId + "edit", async () => {
+      const res = await fetch(`/api/drafts/${draftId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editDraftContent }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return toast(data.error || "Could not save draft");
+      setEditDraftId(null);
+      toast("Draft saved");
+      await load();
+    });
+  }
+
+  async function regenerateDraft(draftId: string) {
+    await run(draftId + "regen", async () => {
+      const res = await fetch(`/api/drafts/${draftId}/regenerate`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return toast(data.error || "Could not regenerate draft");
+      toast("Draft regenerated");
+      await load();
+    });
+  }
+
+  async function createFollowUp(e: React.FormEvent) {
+    e.preventDefault();
+    await run("followup", async () => {
+      const res = await fetch("/api/followups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: id, dueAt: followUpDueAt, note: followUpNote }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return toast(data.error || "Could not create follow-up");
+      setFollowUpDueAt("");
+      setFollowUpNote("");
+      toast("Follow-up added");
+      await load();
+    });
+  }
+
+  async function completeFollowUp(followUpId: string, completed: boolean) {
+    await run("followup" + followUpId, async () => {
+      const res = await fetch(`/api/followups/${followUpId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return toast(data.error || "Could not update follow-up");
+      await load();
+    });
+  }
+
   async function setLeadStatus(status: string) {
     await run("lead" + status, async () => {
       const res = await fetch(`/api/leads/${id}`, {
@@ -149,7 +246,7 @@ export default function LeadDetailPage() {
 
   return (
     <div>
-      <SectionLabel n={2} total="04" label="Lead detail" />
+      <SectionLabel n={2} total="06" label="Lead detail" />
       <BackLink href="/leads">All leads</BackLink>
 
       <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginTop: 10, flexWrap: "wrap" }}>
@@ -248,6 +345,15 @@ export default function LeadDetailPage() {
               <span style={{ marginLeft: "auto" }} className={`badge st-${d.status === "DRAFT" ? "NEW" : d.status}`}>{d.status}</span>
             </div>
             <pre>{d.content}</pre>
+            {editDraftId === d.id && (
+              <div className="stack" style={{ marginTop: 10 }}>
+                <textarea value={editDraftContent} onChange={(e) => setEditDraftContent(e.target.value)} rows={8} maxLength={10000} />
+                <div className="draft-actions">
+                  <button onClick={() => saveDraftContent(d.id)} disabled={busy !== null}>Save draft</button>
+                  <button className="secondary" onClick={() => setEditDraftId(null)}>Cancel</button>
+                </div>
+              </div>
+            )}
             <div className="draft-actions">
               {d.status === "DRAFT" && (
                 <button className="secondary" disabled={busy !== null} onClick={() => setDraftStatus(d.id, "APPROVED")}>
@@ -259,6 +365,12 @@ export default function LeadDetailPage() {
                   {busy === d.id + "SENT" ? <span className="spin" /> : null} I sent this manually — mark SENT
                 </button>
               )}
+              {d.status !== "SENT" && d.status !== "REPLIED" && d.status !== "CLOSED" && editDraftId !== d.id && (
+                <>
+                  <button className="secondary" onClick={() => { setEditDraftId(d.id); setEditDraftContent(d.content); }}>Edit</button>
+                  <button className="secondary" disabled={busy !== null} onClick={() => regenerateDraft(d.id)}>Regenerate</button>
+                </>
+              )}
               <button className="secondary" onClick={() => copyText(d.content, `${d.variant} copied`)}>
                 Copy
               </button>
@@ -266,6 +378,59 @@ export default function LeadDetailPage() {
           </div>
         ))
       )}
+
+      <h2>Follow-ups</h2>
+      <form className="card stack follow-up-form" onSubmit={createFollowUp}>
+        <div className="row">
+          <div className="follow-up-field follow-up-date-field"><label htmlFor="follow-up-due">Due date &amp; time</label><input id="follow-up-due" type="datetime-local" value={followUpDueAt} onChange={(e) => setFollowUpDueAt(e.target.value)} required /></div>
+          <div className="follow-up-field"><label htmlFor="follow-up-note">Note</label><input id="follow-up-note" value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)} maxLength={500} required placeholder="Call back about proposal" /></div>
+        </div>
+        <button className="follow-up-submit" type="submit" disabled={busy !== null}>
+          {busy === "followup" && <span className="spin" aria-hidden="true" />}
+          Add follow-up
+        </button>
+      </form>
+      {lead.followUps.length > 0 && <div className="follow-up-list" aria-label="Scheduled follow-ups">
+        {lead.followUps.map((followUp) => (
+          <article className={`card follow-up-item${followUp.completedAt ? " is-complete" : ""}`} key={followUp.id}>
+            <div className="follow-up-copy">
+              <strong className="follow-up-date">{formatAppDate(followUp.dueAt)}</strong>
+              <span className="muted">{followUp.note}</span>
+            </div>
+            <div className="follow-up-actions">
+              <button className="secondary" disabled={busy !== null} onClick={() => completeFollowUp(followUp.id, !followUp.completedAt)}>{followUp.completedAt ? "Reopen" : "Complete"}</button>
+              <a className="btn secondary" href={`/api/followups/${followUp.id}/calendar`}>ICS</a>
+            </div>
+          </article>
+        ))}
+      </div>}
+
+      <h2>Activity</h2>
+      <ol className="activity-list" aria-label="Activity timeline">
+        {lead.events.map((event) => (
+          <li className="activity-row" key={event.id}>
+            <span className="activity-marker" aria-hidden="true" />
+            <div className="activity-entry">
+              <div className="activity-meta">
+                <time dateTime={event.createdAt}>{formatAppDate(event.createdAt)}</time>
+                <span className={`activity-type${event.type === "STATUS_CHANGE" ? " activity-type-status" : ""}`}>{formatEventType(event.type)}</span>
+              </div>
+              {(() => {
+                const transition = parseStatusTransition(event.message);
+                if (!transition) return event.message ? <p className="activity-message">{event.message}</p> : null;
+                const statusColor = STATUS_COLORS[transition.target] ?? "var(--muted)";
+                return (
+                  <p className="activity-message activity-transition">
+                    <code className="activity-code">{transition.source || "lead"}</code>
+                    <span className="activity-arrow" aria-hidden="true">→</span>
+                    <span className="badge activity-status" style={{ color: statusColor, borderColor: statusColor }}>{transition.target}</span>
+                  </p>
+                );
+              })()}
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

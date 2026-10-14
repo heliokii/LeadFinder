@@ -9,11 +9,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const id = typeof req.query.id === "string" ? req.query.id : undefined;
   if (!id) return res.status(400).json({ error: "A single draft id is required" });
-  const { status } = req.body ?? {};
+  const { status, content } = req.body ?? {};
   if (typeof status !== "string") {
-    return res.status(400).json({ error: "status must be a string" });
+    if (status !== undefined) return res.status(400).json({ error: "status must be a string" });
   }
-  if (!VALID_STATUSES.includes(status)) {
+  if (content !== undefined && (typeof content !== "string" || !content.trim() || content.length > 10000)) {
+    return res.status(400).json({ error: "content must be a non-empty string up to 10000 characters" });
+  }
+  if (status === undefined && content === undefined) {
+    return res.status(400).json({ error: "Provide status or content" });
+  }
+  if (status !== undefined && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of ${VALID_STATUSES.join(", ")}` });
   }
 
@@ -25,8 +31,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const draft = await prisma.draft.findUnique({ where: { id }, include: { lead: true } });
   if (!draft) return res.status(404).json({ error: "Draft not found" });
+  if (content !== undefined && draft.status === "SENT") {
+    return res.status(409).json({ error: "Sent drafts cannot be edited" });
+  }
 
-  if (!canChangeDraftStatus(draft.status, status)) {
+  if (status !== undefined && !canChangeDraftStatus(draft.status, status)) {
     return res.status(409).json({ error: `Cannot move draft from ${draft.status} to ${status}` });
   }
 
@@ -46,7 +55,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const nextDraft = await tx.draft.update({
       where: { id },
       data: {
-        status,
+        ...(status !== undefined ? { status } : {}),
+        ...(content !== undefined ? { content: content.trim() } : {}),
         ...(status === "APPROVED" ? { approvedAt: new Date() } : {}),
         ...(status === "SENT" ? { sentAt: new Date() } : {}),
       },
@@ -57,7 +67,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return nextDraft;
   });
   await safeEvent({
-    leadId: draft.leadId, type: "STATUS_CHANGE", message: `draft ${id} -> ${status}`,
+    leadId: draft.leadId,
+    type: content !== undefined ? "DRAFT_EDITED" : "STATUS_CHANGE",
+    message: content !== undefined ? `draft ${id} edited` : `draft ${id} -> ${status}`,
   });
 
   return res.status(200).json({ draft: updated });

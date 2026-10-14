@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma, ensureDb } from "@/lib/db";
+import { prisma, ensureDb, safeEvent } from "@/lib/db";
 import { generatePaymentMessage } from "@/lib/payment";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -27,5 +27,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     : undefined;
 
   const message = generatePaymentMessage({ amount, currency });
+  await safeEvent({ leadId: id, type: "PAYMENT_MESSAGE_GENERATED", message: "Payment message generated" });
   return res.status(200).json({ message });
 }

@@ -33,6 +33,9 @@ found in this checkout, not a promise that a network dependency will never fail.
   now fails safely.
 - OSM user-agent placeholder detection missed the value used in `.env.example`.
   Both placeholder forms are now warned about.
+- Significant user actions now append audit events, including draft edits and
+  regeneration, follow-up changes/calendar export, bulk actions, exports,
+  payment-message generation, DNC views, lead-list views, and backup import/export.
 - `align-items: end` triggered the Autoprefixer warning; it now uses
   `flex-end` in `src/styles/globals.css`.
 - `tsconfig.json` used the deprecated `baseUrl` setup; the alias remains but
@@ -52,6 +55,10 @@ found in this checkout, not a promise that a network dependency will never fail.
   normalization, scoring, draft, payment, export, and workflow logic. A
   throwaway-DB route test suite is the next useful investment if this becomes
   multi-user or publicly deployed.
+- `npm audit --omit=dev` reports three production dependency findings,
+  including critical Next.js advisories. The available fix crosses a major
+  Next.js version boundary, so this release records the risk rather than
+  applying an unreviewed framework upgrade.
 - The Prisma package in this repository is 5.22.0, so `datasource db { url =
   env("DATABASE_URL") }` is valid and required. The editor warning shown in the
   screenshot is from a newer Prisma language-server schema rule; removing
@@ -62,10 +69,10 @@ found in this checkout, not a promise that a network dependency will never fail.
 ## Verification
 
 - `npx tsc --noEmit --pretty false` passes.
-- `npm test -- --run` passes 22 tests when run with the required elevated
+- `npm test -- --run` passes 26 tests when run with the required elevated
   process permissions (the sandbox-only run is blocked by a Windows `EPERM`
   realpath error inside `node_modules`).
 - `npm run build` passes, including the middleware bundle and all Next pages.
 - `npx prisma validate` passes.
-- `npm audit` could not be completed because this environment could not resolve
-  `registry.npmjs.org`; dependency advisories remain unchecked.
+- `npm audit --omit=dev` completed; see the dependency note above for the
+  remaining Next.js/PostCSS/source-map findings.

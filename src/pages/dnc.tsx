@@ -52,7 +52,7 @@ export default function DncPage() {
 
   return (
     <div>
-      <SectionLabel n={3} total="04" label={`Do-not-contact — ${entries.length} blocked`} />
+      <SectionLabel n={5} total="06" label={`Do-not-contact — ${entries.length} blocked`} />
       <h1>Do-not-contact.</h1>
       <p className="lede">
         Anyone here is skipped automatically by future searches and blocked from being marked SENT.

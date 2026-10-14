@@ -18,18 +18,13 @@
  */
 
 import { osmRateLimiter } from "./rateLimiter";
+import { CATEGORY_CATALOG, type BusinessCategory } from "./categories";
 
-export type BusinessCategory = "dentist" | "real_estate" | "lawyer" | "law_firm";
-
-// Maps our categories to OSM tag queries. law_firm and lawyer share the
-// same underlying tag (OSM doesn't distinguish solo practitioners from
-// firms) — see README for how the app tells them apart heuristically.
-const CATEGORY_TAGS: Record<BusinessCategory, string[]> = {
-  dentist: ["amenity=dentist", "healthcare=dentist"],
-  lawyer: ["office=lawyer"],
-  law_firm: ["office=lawyer"],
-  real_estate: ["office=estate_agent"],
-};
+// Maps the curated catalog to OSM tag queries. Some categories share an
+// underlying tag because OSM does not distinguish those businesses further.
+const CATEGORY_TAGS: Record<BusinessCategory, readonly string[]> = Object.fromEntries(
+  CATEGORY_CATALOG.map((category) => [category.value, category.tags])
+) as unknown as Record<BusinessCategory, readonly string[]>;
 
 export interface GeocodeResult {
   lat: number;
@@ -84,7 +79,7 @@ export async function geocodeArea(area: string): Promise<GeocodeResult> {
   };
 }
 
-function buildOverpassQuery(lat: number, lon: number, radiusM: number, tags: string[]): string {
+function buildOverpassQuery(lat: number, lon: number, radiusM: number, tags: readonly string[]): string {
   // `out center;` gives us a lat/lon for ways/relations too, not just nodes.
   const clauses = tags
     .map((tag) => {
@@ -108,25 +103,48 @@ export async function searchBusinesses(params: {
   category: BusinessCategory;
   keywords?: string;
 }): Promise<RawOsmBusiness[]> {
-  const endpoint = process.env.OVERPASS_ENDPOINT ?? "https://overpass-api.de/api/interpreter";
   const radiusM = Math.round(params.radiusKm * 1000);
   const tags = CATEGORY_TAGS[params.category];
   const query = buildOverpassQuery(params.lat, params.lon, radiusM, tags);
 
-  const data = await osmRateLimiter.schedule(async () => {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        ...userAgentHeaders(),
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: `data=${encodeURIComponent(query)}`,
-    });
-    if (!res.ok) {
-      throw new Error(`Overpass query failed: ${res.status} ${await res.text()}`);
+  const endpoints = overpassEndpoints();
+  let lastError = "unknown error";
+  let data: { elements: OverpassElement[] } | undefined;
+
+  for (const endpoint of endpoints) {
+    try {
+      data = await osmRateLimiter.schedule(async () => {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            ...userAgentHeaders(),
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: `data=${encodeURIComponent(query)}`,
+          signal: AbortSignal.timeout(overpassTimeoutMs()),
+        });
+        if (!res.ok) {
+          const detail = (await res.text()).replace(/\s+/g, " ").trim().slice(0, 240);
+          const error = new Error(`HTTP ${res.status}${detail ? `: ${detail}` : ""}`);
+          if (isRetryableOverpassStatus(res.status)) {
+            throw error;
+          }
+          throw Object.assign(error, { retryable: false });
+        }
+        return (await res.json()) as { elements: OverpassElement[] };
+      });
+      break;
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : "unknown error";
+      if (err && typeof err === "object" && "retryable" in err && err.retryable === false) break;
     }
-    return (await res.json()) as { elements: OverpassElement[] };
-  });
+  }
+
+  if (!data) {
+    throw new Error(
+      `Overpass is temporarily unavailable after ${endpoints.length} endpoint attempt${endpoints.length === 1 ? "" : "s"} (${lastError}). Try a smaller radius or retry in a moment.`
+    );
+  }
 
   const businesses = data.elements
     .map((el) => mapElement(el, params.category))
@@ -138,6 +156,27 @@ export async function searchBusinesses(params: {
   return businesses.filter(
     (b) => b.name.toLowerCase().includes(kw) || (b.address ?? "").toLowerCase().includes(kw)
   );
+}
+
+function overpassEndpoints(): string[] {
+  const configured = (process.env.OVERPASS_ENDPOINTS ?? "")
+    .split(",")
+    .map((endpoint) => endpoint.trim())
+    .filter(Boolean);
+  const primary = process.env.OVERPASS_ENDPOINT ?? "https://overpass-api.de/api/interpreter";
+  const fallbacks = configured.length
+    ? configured
+    : ["https://overpass.kumi.systems/api/interpreter"];
+  return [...new Set([primary, ...fallbacks])];
+}
+
+function overpassTimeoutMs(): number {
+  const value = Number(process.env.OVERPASS_REQUEST_TIMEOUT_MS ?? 35000);
+  return Number.isFinite(value) && value >= 1000 ? value : 35000;
+}
+
+function isRetryableOverpassStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500;
 }
 
 export interface OverpassElement {

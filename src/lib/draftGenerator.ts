@@ -1,4 +1,5 @@
 import type { Lead } from "@prisma/client";
+import { getCategory } from "./categories";
 
 /**
  * Pure template-based generation — no LLM call, no API cost, fully
@@ -15,34 +16,21 @@ export type DraftVariant = "ULTRA_SHORT" | "NORMAL" | "VALUE_FIRST";
 
 const OPT_OUT_LINE = "Reply STOP or let me know and I won't follow up again.";
 
-const CATEGORY_LABEL: Record<string, string> = {
-  dentist: "dental practice",
-  real_estate: "real estate business",
-  lawyer: "law practice",
-  law_firm: "law firm",
-};
-
-const VALUE_SUGGESTIONS: Record<string, string[]> = {
-  dentist: ["an online booking page", "a mobile-friendly services page", "a map/location button"],
-  real_estate: ["a listings page that updates easily", "lead-capture contact form", "mobile speed"],
-  lawyer: ["a clear practice-areas page", "an intake/contact form", "a map/location button"],
-  law_firm: ["a clear practice-areas page", "an intake/contact form", "SEO basics for local search"],
-};
-
 function cityFromAddress(address: string | null): string {
   if (!address) return "the area";
   const parts = address.split(",").map((p) => p.trim());
   return parts.length >= 2 ? parts[parts.length - 2] : parts[0];
 }
 
-function pick<T>(arr: T[], n: number): T[] {
+function pick<T>(arr: readonly T[], n: number): T[] {
   return arr.slice(0, n);
 }
 
 export function generateDraft(lead: Lead, variant: DraftVariant): string {
-  const categoryLabel = CATEGORY_LABEL[lead.category] ?? "business";
+  const category = getCategory(lead.category);
+  const categoryLabel = category?.copyLabel ?? "business";
   const city = cityFromAddress(lead.address);
-  const suggestions = VALUE_SUGGESTIONS[lead.category] ?? ["a simple website", "a contact form"];
+  const suggestions = category?.suggestions ?? ["a simple website", "a contact form"];
 
   switch (variant) {
     case "ULTRA_SHORT": {

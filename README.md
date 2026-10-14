@@ -23,10 +23,17 @@ manually approved and copy-pasted.
   rendered by `Pipeline` in `src/components/ui.tsx`, filtered per status in
   `/leads`, and advanced on `/leads/[id]`.
 - **Search & filtering** — `/leads` filters by name / address / phone text
-  search, category (Dentist, Real Estate, Lawyer, Law Firm), and status, with
+  search, a searchable business category catalog, and status, with
   `Best score / Newest / Name A–Z` sorting against `GET /api/leads`.
 - **Data export** — one-click **Export CSV** in `/leads` hits
   `GET /api/export` (`src/pages/api/export.ts`) and downloads `leads.csv`.
+- **Workflow tools** — edit or regenerate unsent drafts, schedule local follow-ups,
+  download calendar events as `.ics`, and review the lead activity timeline.
+- **Lead intelligence** — filter by score/contact fields, select leads for bulk
+  status/DNC actions, review search history, export filtered results, and browse
+  coordinates on `/map`.
+- **Local backup** — download or safely restore a versioned JSON snapshot from
+  `/settings` using merge or explicitly confirmed replace mode.
 
 ## What changed from the original brief
 
@@ -42,6 +49,10 @@ tier and a key-management burden for a personal tool. This uses
 Both are documented, public APIs — this calls them the way they're meant to
 be called, not by scraping Google's map tiles or HTML (which the original
 brief already correctly ruled out).
+
+Overpass can return temporary 429/5xx responses when a public instance is
+busy. Searches retry configured mirrors (`OVERPASS_ENDPOINTS`) and return a
+short retry/smaller-radius message if every endpoint is unavailable.
 
 **Trade-off to know about:** OSM has no star ratings or review counts, and
 tag completeness varies a lot by area — a business might exist on the map
@@ -86,8 +97,9 @@ See `prisma/schema.prisma`. Summary:
   other than `SENT` was ever transmitted anywhere.
 - **DoNotContact** — checked before a search saves a new lead and before a
   draft can be marked `SENT`.
-- **Event** — append-only log: every search, every draft generated, every
-  status change.
+- **Event** — append-only audit log for searches, draft generation/editing,
+  follow-ups, status changes, exports, backups, DNC activity, and payment-message
+  generation. Sensitive credentials and message content are not logged.
 - **SearchQuery** — a record of areas/categories you've already covered.
 
 ## Setup
@@ -107,7 +119,8 @@ nothing in the current code expects one.
 
 ## Using it
 
-1. **Search** — type an area ("Lipa City, Batangas"), pick a category and
+1. **Search** — type an area ("Lipa City, Batangas"), search the curated
+   category catalog (with aliases and OSM hints), and
    radius, run it. New no-website leads get saved; ones that already have
    a working site are skipped and reported in the summary.
 2. **Leads** — filter/sort, open one, hit "Generate 3 draft variants."
@@ -124,6 +137,8 @@ nothing in the current code expects one.
    them and no draft for them can ever be marked SENT again.
 6. When a lead becomes a paying client, **"Mark as won client"** then
    **"Get payment message"** for a ready-to-paste payment options block.
+7. Add a follow-up date/note from the lead detail page; use the ICS link to add
+   it to your calendar when needed.
 
 ## Compliance notes (read before sending anything)
 
@@ -155,6 +170,8 @@ nothing in the current code expects one.
 - `tests/workflow.test.ts`, `tests/payment.test.ts`, `tests/export.test.ts`,
   and `tests/rateLimiter.test.ts` — status gates, payment input sanitization,
   spreadsheet-safe CSV values, and invalid rate-limit configuration.
+- `tests/followUps.test.ts` and `tests/backup.test.ts` — calendar formatting,
+  date validation, and versioned backup validation.
 - `tests/mocks/overpass-response.json` — a captured-shape Overpass
   response (one no-website listing, one with a site, one unnamed node
   that should be filtered out) for exercising `mapElement()` without
