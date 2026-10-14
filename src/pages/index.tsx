@@ -8,8 +8,8 @@ export default function SearchPage() {
   useToast();
   const [area, setArea] = useState("");
   const [radiusKm, setRadiusKm] = useState(5);
-  const [category, setCategory] = useState<string>("dentist");
-  const [categoryQuery, setCategoryQuery] = useState<string>(CATEGORY_CATALOG[0].label);
+  const [category, setCategory] = useState<string>("");
+  const [categoryQuery, setCategoryQuery] = useState<string>("");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [keywords, setKeywords] = useState("");
   const [loading, setLoading] = useState(false);

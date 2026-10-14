@@ -5,7 +5,7 @@ describe("category catalog", () => {
   it("keeps legacy categories and adds searchable options", () => {
     expect(CATEGORY_VALUES).toContain("dentist");
     expect(CATEGORY_VALUES).toContain("real_estate");
-    expect(CATEGORY_VALUES.length).toBeGreaterThan(4);
+    expect(CATEGORY_VALUES.length).toBeGreaterThan(50);
     expect(getCategory("dental")?.value).toBe("dentist");
   });
 

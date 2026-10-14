@@ -273,7 +273,7 @@ input[type="checkbox"]:focus-visible {
 .category-picker { position: relative; }
 .category-combobox { position: relative; }
 .category-combobox input { padding-right: 42px; }
-.category-combobox::after { content: "⌄"; position: absolute; right: 14px; top: 8px; color: var(--muted); font-size: 1.1rem; pointer-events: none; }
+.category-combobox::after { content: ""; position: absolute; right: 16px; top: 50%; width: 7px; height: 7px; border-right: 1px solid var(--muted); border-bottom: 1px solid var(--muted); transform: translateY(-65%) rotate(45deg); pointer-events: none; }
 .category-suggestions { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; right: 0; max-height: 288px; overflow-y: auto; border: 1px solid var(--ink); background: var(--bg); box-shadow: 4px 4px 0 var(--ink); }
 .category-suggestions button { width: 100%; min-height: 0; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: var(--bg); color: var(--ink); display: flex; align-items: baseline; justify-content: space-between; gap: 16px; text-align: left; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 0.9rem; }
 .category-suggestions button:last-child { border-bottom: 0; }
