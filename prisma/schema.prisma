@@ -47,6 +47,7 @@ model Lead {
 
   drafts           Draft[]
   events           Event[]
+  followUps        FollowUp[]
 
   @@index([status])
   @@index([category])
@@ -70,9 +71,24 @@ model Draft {
   sentAt    DateTime?
 
   createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([leadId])
   @@index([status])
+}
+
+model FollowUp {
+  id          String    @id @default(cuid())
+  leadId      String
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  dueAt       DateTime
+  note        String
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([leadId])
+  @@index([dueAt])
+  @@index([completedAt])
 }
 
 // Anyone/any business that must never be contacted again, regardless of

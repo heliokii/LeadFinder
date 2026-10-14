@@ -9,6 +9,18 @@ interface Draft {
   status: string;
   channel: string;
 }
+interface FollowUp {
+  id: string;
+  dueAt: string;
+  note: string;
+  completedAt: string | null;
+}
+interface EventRow {
+  id: string;
+  type: string;
+  message: string | null;
+  createdAt: string;
+}
 interface LeadDetail {
   id: string;
   name: string;
@@ -22,6 +34,8 @@ interface LeadDetail {
   status: string;
   notes: string | null;
   drafts: Draft[];
+  followUps: FollowUp[];
+  events: EventRow[];
 }
 
 const NEXT: Record<string, string | null> = {
@@ -44,6 +58,10 @@ export default function LeadDetailPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [paymentMsg, setPaymentMsg] = useState<string | null>(null);
   const [confirmDnc, setConfirmDnc] = useState(false);
+  const [editDraftId, setEditDraftId] = useState<string | null>(null);
+  const [editDraftContent, setEditDraftContent] = useState("");
+  const [followUpNote, setFollowUpNote] = useState("");
+  const [followUpDueAt, setFollowUpDueAt] = useState("");
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -110,6 +128,61 @@ export default function LeadDetailPage() {
         return;
       }
       toast(status === "APPROVED" ? "Draft approved" : status === "SENT" ? "Marked SENT — logged" : `Draft → ${status}`);
+      await load();
+    });
+  }
+
+  async function saveDraftContent(draftId: string) {
+    await run(draftId + "edit", async () => {
+      const res = await fetch(`/api/drafts/${draftId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editDraftContent }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return toast(data.error || "Could not save draft");
+      setEditDraftId(null);
+      toast("Draft saved");
+      await load();
+    });
+  }
+
+  async function regenerateDraft(draftId: string) {
+    await run(draftId + "regen", async () => {
+      const res = await fetch(`/api/drafts/${draftId}/regenerate`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return toast(data.error || "Could not regenerate draft");
+      toast("Draft regenerated");
+      await load();
+    });
+  }
+
+  async function createFollowUp(e: React.FormEvent) {
+    e.preventDefault();
+    await run("followup", async () => {
+      const res = await fetch("/api/followups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: id, dueAt: followUpDueAt, note: followUpNote }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return toast(data.error || "Could not create follow-up");
+      setFollowUpDueAt("");
+      setFollowUpNote("");
+      toast("Follow-up added");
+      await load();
+    });
+  }
+
+  async function completeFollowUp(followUpId: string, completed: boolean) {
+    await run("followup" + followUpId, async () => {
+      const res = await fetch(`/api/followups/${followUpId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return toast(data.error || "Could not update follow-up");
       await load();
     });
   }
@@ -248,6 +321,15 @@ export default function LeadDetailPage() {
               <span style={{ marginLeft: "auto" }} className={`badge st-${d.status === "DRAFT" ? "NEW" : d.status}`}>{d.status}</span>
             </div>
             <pre>{d.content}</pre>
+            {editDraftId === d.id && (
+              <div className="stack" style={{ marginTop: 10 }}>
+                <textarea value={editDraftContent} onChange={(e) => setEditDraftContent(e.target.value)} rows={8} maxLength={10000} />
+                <div className="draft-actions">
+                  <button onClick={() => saveDraftContent(d.id)} disabled={busy !== null}>Save draft</button>
+                  <button className="secondary" onClick={() => setEditDraftId(null)}>Cancel</button>
+                </div>
+              </div>
+            )}
             <div className="draft-actions">
               {d.status === "DRAFT" && (
                 <button className="secondary" disabled={busy !== null} onClick={() => setDraftStatus(d.id, "APPROVED")}>
@@ -259,6 +341,12 @@ export default function LeadDetailPage() {
                   {busy === d.id + "SENT" ? <span className="spin" /> : null} I sent this manually — mark SENT
                 </button>
               )}
+              {d.status !== "SENT" && d.status !== "REPLIED" && d.status !== "CLOSED" && editDraftId !== d.id && (
+                <>
+                  <button className="secondary" onClick={() => { setEditDraftId(d.id); setEditDraftContent(d.content); }}>Edit</button>
+                  <button className="secondary" disabled={busy !== null} onClick={() => regenerateDraft(d.id)}>Regenerate</button>
+                </>
+              )}
               <button className="secondary" onClick={() => copyText(d.content, `${d.variant} copied`)}>
                 Copy
               </button>
@@ -266,6 +354,34 @@ export default function LeadDetailPage() {
           </div>
         ))
       )}
+
+      <h2>Follow-ups</h2>
+      <form className="card stack" onSubmit={createFollowUp}>
+        <div className="row">
+          <div><label htmlFor="follow-up-due">Due</label><input id="follow-up-due" type="datetime-local" value={followUpDueAt} onChange={(e) => setFollowUpDueAt(e.target.value)} required /></div>
+          <div><label htmlFor="follow-up-note">Note</label><input id="follow-up-note" value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)} maxLength={500} required placeholder="Call back about proposal" /></div>
+        </div>
+        <button type="submit" disabled={busy !== null}>Add follow-up</button>
+      </form>
+      {lead.followUps.length > 0 && <div className="stack" style={{ marginTop: 12 }}>
+        {lead.followUps.map((followUp) => (
+          <div className="card" key={followUp.id} style={{ opacity: followUp.completedAt ? 0.6 : 1 }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <strong>{new Date(followUp.dueAt).toLocaleString()}</strong>
+              <span className="muted">{followUp.note}</span>
+              <span style={{ marginLeft: "auto" }}>
+                <button className="secondary" onClick={() => completeFollowUp(followUp.id, !followUp.completedAt)}>{followUp.completedAt ? "Reopen" : "Complete"}</button>
+                <a className="btn secondary" href={`/api/followups/${followUp.id}/calendar`} style={{ marginLeft: 8 }}>ICS</a>
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>}
+
+      <h2>Activity</h2>
+      <div className="stack">
+        {lead.events.map((event) => <div className="muted" key={event.id}>{new Date(event.createdAt).toLocaleString()} · {event.type}{event.message ? ` · ${event.message}` : ""}</div>)}
+      </div>
     </div>
   );
 }

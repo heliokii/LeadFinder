@@ -54,9 +54,14 @@ export function ensureDb(): Promise<void> {
         `CREATE INDEX IF NOT EXISTS "Lead_status_idx" ON "Lead"("status")`,
         `CREATE INDEX IF NOT EXISTS "Lead_category_idx" ON "Lead"("category")`,
         `CREATE INDEX IF NOT EXISTS "Lead_phoneNormalized_idx" ON "Lead"("phoneNormalized")`,
-        `CREATE TABLE IF NOT EXISTS "Draft" ("id" TEXT NOT NULL PRIMARY KEY, "leadId" TEXT NOT NULL, "variant" TEXT NOT NULL, "channel" TEXT NOT NULL, "content" TEXT NOT NULL, "status" TEXT NOT NULL DEFAULT 'DRAFT', "approvedAt" DATETIME, "sentAt" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "Draft_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead" ("id") ON DELETE CASCADE ON UPDATE CASCADE)`,
+        `CREATE TABLE IF NOT EXISTS "Draft" ("id" TEXT NOT NULL PRIMARY KEY, "leadId" TEXT NOT NULL, "variant" TEXT NOT NULL, "channel" TEXT NOT NULL, "content" TEXT NOT NULL, "status" TEXT NOT NULL DEFAULT 'DRAFT', "approvedAt" DATETIME, "sentAt" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "Draft_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead" ("id") ON DELETE CASCADE ON UPDATE CASCADE)`,
+        `ALTER TABLE "Draft" ADD COLUMN "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`,
         `CREATE INDEX IF NOT EXISTS "Draft_leadId_idx" ON "Draft"("leadId")`,
         `CREATE INDEX IF NOT EXISTS "Draft_status_idx" ON "Draft"("status")`,
+        `CREATE TABLE IF NOT EXISTS "FollowUp" ("id" TEXT NOT NULL PRIMARY KEY, "leadId" TEXT NOT NULL, "dueAt" DATETIME NOT NULL, "note" TEXT NOT NULL, "completedAt" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "FollowUp_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead" ("id") ON DELETE CASCADE ON UPDATE CASCADE)`,
+        `CREATE INDEX IF NOT EXISTS "FollowUp_leadId_idx" ON "FollowUp"("leadId")`,
+        `CREATE INDEX IF NOT EXISTS "FollowUp_dueAt_idx" ON "FollowUp"("dueAt")`,
+        `CREATE INDEX IF NOT EXISTS "FollowUp_completedAt_idx" ON "FollowUp"("completedAt")`,
         `CREATE TABLE IF NOT EXISTS "DoNotContact" ("id" TEXT NOT NULL PRIMARY KEY, "phone" TEXT, "email" TEXT, "name" TEXT, "reason" TEXT, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
         `CREATE INDEX IF NOT EXISTS "DoNotContact_phone_idx" ON "DoNotContact"("phone")`,
         `CREATE INDEX IF NOT EXISTS "DoNotContact_email_idx" ON "DoNotContact"("email")`,
@@ -65,7 +70,12 @@ export function ensureDb(): Promise<void> {
         `CREATE TABLE IF NOT EXISTS "SearchQuery" ("id" TEXT NOT NULL PRIMARY KEY, "area" TEXT NOT NULL, "radiusKm" REAL NOT NULL, "category" TEXT NOT NULL, "keywords" TEXT, "resultCount" INTEGER NOT NULL DEFAULT 0, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
       ];
       for (const sql of stmts) {
-        await prisma.$executeRawUnsafe(sql);
+        try {
+          await prisma.$executeRawUnsafe(sql);
+        } catch (err) {
+          // Existing local databases may already have the column from a migration.
+          if (!sql.startsWith('ALTER TABLE "Draft" ADD COLUMN')) throw err;
+        }
       }
     })().catch((err) => {
       // Reset cache so the next request retries instead of sticking to failure.
