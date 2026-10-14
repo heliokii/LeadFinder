@@ -23,9 +23,9 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 const VALUE_SUGGESTIONS: Record<string, string[]> = {
-  dentist: ["an online booking page", "a mobile-friendly services page", "Google Maps CTA button"],
+  dentist: ["an online booking page", "a mobile-friendly services page", "a map/location button"],
   real_estate: ["a listings page that updates easily", "lead-capture contact form", "mobile speed"],
-  lawyer: ["a clear practice-areas page", "an intake/contact form", "Google Maps CTA button"],
+  lawyer: ["a clear practice-areas page", "an intake/contact form", "a map/location button"],
   law_firm: ["a clear practice-areas page", "an intake/contact form", "SEO basics for local search"],
 };
 
@@ -46,11 +46,13 @@ export function generateDraft(lead: Lead, variant: DraftVariant): string {
 
   switch (variant) {
     case "ULTRA_SHORT": {
-      const msg =
-        `Hi ${lead.name} — noticed you don't have a website listed on Google Maps yet. ` +
-        `I build simple, fast sites for ${categoryLabel}s in ${city}. Worth a quick look? ` +
-        OPT_OUT_LINE;
-      return msg.length <= 300 ? msg : msg.slice(0, 297) + "...";
+      const prefix =
+        `Hi ${lead.name} — noticed your business listing doesn't have a website link. ` +
+        `I build simple, fast sites for ${categoryLabel}s in ${city}. Worth a quick look?`;
+      const suffix = ` ${OPT_OUT_LINE}`;
+      if (prefix.length + suffix.length <= 300) return prefix + suffix;
+      const available = Math.max(0, 300 - suffix.length - 3);
+      return `${prefix.slice(0, available)}...${suffix}`;
     }
 
     case "NORMAL":
@@ -58,7 +60,7 @@ export function generateDraft(lead: Lead, variant: DraftVariant): string {
         `Hi ${lead.name} team,`,
         ``,
         `I came across your listing while looking at ${categoryLabel}s in ${city}, and noticed you don't currently have a website linked.`,
-        `A lot of people search Google Maps first and decide whether to call based on whether there's a site to check out — so it can be an easy way to pick up more inquiries.`,
+        `People often look for a website before deciding whether to call, so it can be an easy way to pick up more inquiries.`,
         `I build simple, fast, mobile-friendly websites and would be happy to put together a free mockup so you can see what it'd look like before committing to anything.`,
         `No pressure either way — ${OPT_OUT_LINE}`,
       ].join("\n");
@@ -67,7 +69,7 @@ export function generateDraft(lead: Lead, variant: DraftVariant): string {
       return [
         `Hi ${lead.name} team,`,
         ``,
-        `Quick note — I looked at your Google Maps listing and a couple of things stood out that a simple website would help with:`,
+        `Quick note — I looked at your public business listing and a couple of things stood out that a simple website would help with:`,
         ...pick(suggestions, 3).map((s) => `  • ${s}`),
         ``,
         `I put together websites for local ${categoryLabel}s and can share a free mockup based on what's already public about your business, no cost or commitment.`,

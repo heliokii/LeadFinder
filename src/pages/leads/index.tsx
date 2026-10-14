@@ -25,17 +25,26 @@ export default function LeadsPage() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (status) params.set("status", status);
-    if (category) params.set("category", category);
-    if (sort) params.set("sort", sort);
-    const res = await fetch(`/api/leads?${params.toString()}`);
-    const data = await res.json();
-    setLeads(data.leads ?? []);
-    setLoading(false);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (status) params.set("status", status);
+      if (category) params.set("category", category);
+      if (sort) params.set("sort", sort);
+      const res = await fetch(`/api/leads?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not load leads");
+      setLeads(data.leads ?? []);
+    } catch (err) {
+      setLeads([]);
+      setError(err instanceof Error ? err.message : "Could not load leads");
+    } finally {
+      setLoading(false);
+    }
   }, [status, category, sort]);
 
   useEffect(() => {
@@ -55,6 +64,7 @@ export default function LeadsPage() {
       <SectionLabel n={2} total="04" label={`Leads — ${leads.length} saved`} />
       <h1>Leads.</h1>
       <p className="lede">No-website businesses, scored by how contactable they look. Click a row to work it.</p>
+      {error && <div className="alert-error" role="alert">{error}</div>}
 
       <div className="filters" style={{ marginTop: 20 }}>
         <div className="grow">

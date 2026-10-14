@@ -302,7 +302,7 @@ tr.row-link { cursor: pointer; }
 .badge.st-CLOSED { color: var(--muted); }
 .badge.st-DNC, .badge.dnc { color: var(--danger); border-color: var(--danger); }
 
-.filters { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; align-items: end; }
+.filters { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; align-items: flex-end; }
 .filters > * { min-width: 150px; flex: 1; }
 .filters .grow { flex: 2; }
 @media (max-width: 640px) { .filters > * { min-width: 100%; } }

@@ -17,13 +17,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "POST") {
     const { phone, email, name, reason, country } = req.body ?? {};
-    if (!phone && !email) {
+    if (phone !== undefined && typeof phone !== "string") {
+      return res.status(400).json({ error: "phone must be a string" });
+    }
+    if (email !== undefined && typeof email !== "string") {
+      return res.status(400).json({ error: "email must be a string" });
+    }
+    if (country !== undefined && typeof country !== "string") {
+      return res.status(400).json({ error: "country must be a string" });
+    }
+    if (!phone?.trim() && !email?.trim()) {
       return res.status(400).json({ error: "Provide at least a phone or email" });
     }
+    const normalizedPhone = phone ? normalizePhone(phone, country || DEFAULT_COUNTRY) : undefined;
+    const normalizedEmail = typeof email === "string" && email.trim() ? email.trim().toLowerCase() : undefined;
+    const existing = await prisma.doNotContact.findFirst({
+      where: {
+        OR: [
+          ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
+          ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
+        ],
+      },
+    });
+    if (existing) return res.status(409).json({ error: "That contact is already on the do-not-contact list" });
+
     const entry = await prisma.doNotContact.create({
       data: {
-        phone: phone ? normalizePhone(phone, country || DEFAULT_COUNTRY) ?? phone : undefined,
-        email: typeof email === "string" && email.trim() ? email.trim() : undefined,
+        phone: phone ? normalizedPhone ?? phone : undefined,
+        email: normalizedEmail,
         name: typeof name === "string" && name.trim() ? name.trim() : undefined,
         reason: typeof reason === "string" && reason.trim() ? reason.trim() : undefined,
       },

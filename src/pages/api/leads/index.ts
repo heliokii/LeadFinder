@@ -12,11 +12,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { status, category, minScore, sort } = req.query;
 
+  const minScoreRaw = typeof minScore === "string" && minScore.trim() ? Number(minScore) : undefined;
+  if (minScoreRaw !== undefined && (!Number.isFinite(minScoreRaw) || minScoreRaw < 0 || minScoreRaw > 100)) {
+    return res.status(400).json({ error: "minScore must be a number from 0 to 100" });
+  }
+
   const leads = await prisma.lead.findMany({
     where: {
       ...(status && typeof status === "string" ? { status } : {}),
       ...(category && typeof category === "string" ? { category } : {}),
-      ...(minScore ? { score: { gte: Number(minScore) } } : {}),
+      ...(minScoreRaw !== undefined ? { score: { gte: minScoreRaw } } : {}),
     },
     orderBy:
       sort === "newest"

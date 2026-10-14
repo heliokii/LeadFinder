@@ -59,6 +59,10 @@ export function normalizePhone(
   defaultCountry: string
 ): string | undefined {
   if (!raw) return undefined;
-  const parsed = parsePhoneNumberFromString(raw, defaultCountry as CountryCode);
-  return parsed?.isValid() ? parsed.number : undefined;
+  try {
+    const parsed = parsePhoneNumberFromString(raw, defaultCountry as CountryCode);
+    return parsed?.isValid() ? parsed.number : undefined;
+  } catch {
+    return undefined;
+  }
 }
