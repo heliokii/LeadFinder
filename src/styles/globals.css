@@ -189,7 +189,12 @@ form.follow-up-form { width: 100%; max-width: none; }
 .activity-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 7px 12px; }
 .activity-meta time { white-space: nowrap; font-family: ui-monospace, Menlo, monospace; font-size: 0.76rem; letter-spacing: 0.01em; color: var(--muted); }
 .activity-type { white-space: nowrap; font-family: ui-monospace, Menlo, monospace; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+.activity-type-status { color: var(--amber); }
 .activity-message { margin: 4px 0 0; overflow-wrap: anywhere; color: var(--ink); }
+.activity-transition { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.activity-code { padding: 4px 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--muted); font-family: ui-monospace, Menlo, monospace; font-size: 0.76rem; }
+.activity-arrow { color: var(--ink); font-size: 1.05rem; font-weight: 600; line-height: 1; }
+.activity-status { padding: 4px 9px; font-size: 0.66rem; }
 
 @media (max-width: 560px) {
   .follow-up-date-field { flex-basis: auto; }

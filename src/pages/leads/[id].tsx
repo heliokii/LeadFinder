@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import { BackLink, Pipeline, Score, SectionLabel, copyText, toast, useToast } from "@/components/ui";
+import { STATUS_COLORS } from "@/lib/statusColors";
 
 interface Draft {
   id: string;
@@ -65,6 +66,12 @@ function formatAppDate(value: string) {
 
 function formatEventType(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function parseStatusTransition(value: string | null) {
+  if (!value) return null;
+  const match = value.match(/^(.*?)\s*->\s*([A-Z_]+)$/);
+  return match ? { source: match[1].trim(), target: match[2] } : null;
 }
 
 export default function LeadDetailPage() {
@@ -406,9 +413,20 @@ export default function LeadDetailPage() {
             <div className="activity-entry">
               <div className="activity-meta">
                 <time dateTime={event.createdAt}>{formatAppDate(event.createdAt)}</time>
-                <span className="activity-type">{formatEventType(event.type)}</span>
+                <span className={`activity-type${event.type === "STATUS_CHANGE" ? " activity-type-status" : ""}`}>{formatEventType(event.type)}</span>
               </div>
-              {event.message ? <p className="activity-message">{event.message}</p> : null}
+              {(() => {
+                const transition = parseStatusTransition(event.message);
+                if (!transition) return event.message ? <p className="activity-message">{event.message}</p> : null;
+                const statusColor = STATUS_COLORS[transition.target] ?? "var(--muted)";
+                return (
+                  <p className="activity-message activity-transition">
+                    <code className="activity-code">{transition.source || "lead"}</code>
+                    <span className="activity-arrow" aria-hidden="true">→</span>
+                    <span className="badge activity-status" style={{ color: statusColor, borderColor: statusColor }}>{transition.target}</span>
+                  </p>
+                );
+              })()}
             </div>
           </li>
         ))}
