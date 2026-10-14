@@ -47,7 +47,7 @@ export default function SearchPage() {
     const query = categoryQuery.trim().toLowerCase();
     if (!query) return true;
     return [item.value, item.label, ...item.aliases].some((value) => value.toLowerCase().includes(query));
-  }).slice(0, 8);
+  });
 
   function chooseCategory(value: string) {
     const item = CATEGORY_CATALOG.find((candidate) => candidate.value === value);
