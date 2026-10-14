@@ -18,15 +18,18 @@ export interface PaymentOptions {
 
 export function generatePaymentMessage(opts: PaymentOptions = {}): string {
   const lines: string[] = [];
-  const amountLine =
-    opts.amount != null ? `Total: ${opts.amount} ${opts.currency ?? DEFAULT_CURRENCY}` : undefined;
+  const amount = Number.isFinite(opts.amount) && (opts.amount as number) >= 0 ? opts.amount : undefined;
+  const currency = typeof opts.currency === "string" && /^[A-Za-z]{3}$/.test(opts.currency)
+    ? opts.currency.toUpperCase()
+    : DEFAULT_CURRENCY;
+  const amountLine = amount != null ? `Total: ${amount} ${currency}` : undefined;
   if (amountLine) lines.push(amountLine, "");
 
   lines.push("You can pay via whichever is easiest for you:");
 
   const paypal = process.env.PAYPAL_ME_HANDLE;
   if (paypal) {
-    const link = opts.amount != null ? `https://paypal.me/${paypal}/${opts.amount}` : `https://paypal.me/${paypal}`;
+    const link = amount != null ? `https://paypal.me/${paypal}/${amount}` : `https://paypal.me/${paypal}`;
     lines.push(`• PayPal: ${link}`);
   }
 

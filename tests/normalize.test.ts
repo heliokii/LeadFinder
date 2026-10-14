@@ -32,4 +32,8 @@ describe("normalizePhone", () => {
     expect(normalizePhone("call us!", "PH")).toBeUndefined();
     expect(normalizePhone(undefined, "PH")).toBeUndefined();
   });
+
+  it("does not throw for an invalid country override", () => {
+    expect(normalizePhone("0917 123 4567", "ZZ")).toBeUndefined();
+  });
 });

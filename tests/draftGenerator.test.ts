@@ -33,6 +33,12 @@ describe("generateDraft", () => {
     expect(content.length).toBeLessThanOrEqual(300);
   });
 
+  it("keeps the opt-out line when a lead name is very long", () => {
+    const content = generateDraft(lead({ name: "A".repeat(500) }), "ULTRA_SHORT");
+    expect(content.length).toBeLessThanOrEqual(300);
+    expect(content).toContain("Reply STOP");
+  });
+
   it("includes an opt-out line in every variant", () => {
     for (const variant of ["ULTRA_SHORT", "NORMAL", "VALUE_FIRST"] as const) {
       const content = generateDraft(lead(), variant);

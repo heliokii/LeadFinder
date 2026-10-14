@@ -31,11 +31,17 @@ export default function DncPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await fetch("/api/dnc", {
+    const res = await fetch("/api/dnc", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, phone, reason }),
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setSaving(false);
+      toast(data.error || "Could not update do-not-contact list");
+      return;
+    }
     setName("");
     setPhone("");
     setReason("");

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma, ensureDb, safeEvent } from "@/lib/db";
+import { canChangeLeadStatus } from "@/lib/workflow";
 
 const VALID_STATUSES = [
   "NEW",
@@ -14,7 +15,8 @@ const VALID_STATUSES = [
 ];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const id = req.query.id as string;
+  const id = typeof req.query.id === "string" ? req.query.id : undefined;
+  if (!id) return res.status(400).json({ error: "A single lead id is required" });
 
   try {
     await ensureDb();
@@ -33,8 +35,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "PATCH") {
     const { status, notes } = req.body ?? {};
+    if (status !== undefined && typeof status !== "string") {
+      return res.status(400).json({ error: "status must be a string" });
+    }
+    if (notes !== undefined && notes !== null && typeof notes !== "string") {
+      return res.status(400).json({ error: "notes must be a string or null" });
+    }
     if (status && !VALID_STATUSES.includes(status)) {
       return res.status(400).json({ error: `status must be one of ${VALID_STATUSES.join(", ")}` });
+    }
+
+    const current = await prisma.lead.findUnique({ where: { id }, select: { status: true } });
+    if (!current) return res.status(404).json({ error: "Not found" });
+    if (status && !canChangeLeadStatus(current.status, status)) {
+      return res.status(409).json({ error: `Cannot move lead from ${current.status} to ${status}` });
     }
 
     let lead;
@@ -57,9 +71,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // searches skip it automatically.
     if (status === "DNC" && lead.phoneNormalized) {
       try {
-        await prisma.doNotContact.create({
-          data: { phone: lead.phoneNormalized, name: lead.name, reason: "Marked DNC from lead detail" },
-        });
+        const existing = await prisma.doNotContact.findFirst({ where: { phone: lead.phoneNormalized } });
+        if (!existing) {
+          await prisma.doNotContact.create({
+            data: { phone: lead.phoneNormalized, name: lead.name, reason: "Marked DNC from lead detail" },
+          });
+        }
       } catch {
         // Already filed (e.g. duplicate phone) — not fatal.
       }

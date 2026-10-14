@@ -65,7 +65,15 @@ export default function LeadDetailPage() {
     );
   }
 
-  const flags: string[] = lead.scoreFlags ? JSON.parse(lead.scoreFlags) : [];
+  let flags: string[] = [];
+  if (lead.scoreFlags) {
+    try {
+      const parsed = JSON.parse(lead.scoreFlags);
+      if (Array.isArray(parsed) && parsed.every((flag) => typeof flag === "string")) flags = parsed;
+    } catch {
+      // Ignore malformed legacy score metadata; the lead itself is still usable.
+    }
+  }
 
   async function run(key: string, fn: () => Promise<void>) {
     setBusy(key);
@@ -108,11 +116,16 @@ export default function LeadDetailPage() {
 
   async function setLeadStatus(status: string) {
     await run("lead" + status, async () => {
-      await fetch(`/api/leads/${id}`, {
+      const res = await fetch(`/api/leads/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast(data.error || "Could not update lead");
+        return;
+      }
       toast(status === "DNC" ? "Added to do-not-contact" : `Lead → ${status}`);
       setConfirmDnc(false);
       await load();
@@ -123,11 +136,16 @@ export default function LeadDetailPage() {
     await run("pay", async () => {
       const res = await fetch(`/api/leads/${id}/payment`);
       const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || "Could not create payment message");
+        return;
+      }
       setPaymentMsg(data.message);
     });
   }
 
   const next = NEXT[lead.status];
+  const canGenerate = lead.status === "QUALIFIED" || lead.status === "DRAFTED";
 
   return (
     <div>
@@ -212,12 +230,14 @@ export default function LeadDetailPage() {
         <div className="empty">
           <div className="big">✎</div>
           <p><strong>No drafts yet.</strong></p>
-          <p className="muted">Generate 3 variants: ultra-short, normal, value-first.</p>
-          <p style={{ marginTop: 14 }}>
+          <p className="muted">
+            {canGenerate ? "Generate 3 variants: ultra-short, normal, value-first." : "Advance this lead to QUALIFIED before generating drafts."}
+          </p>
+          {canGenerate && <p style={{ marginTop: 14 }}>
             <button onClick={generateDrafts} disabled={busy === "gen"}>
               {busy === "gen" && <span className="spin" />} Generate 3 draft variants
             </button>
-          </p>
+          </p>}
         </div>
       ) : (
         lead.drafts.map((d, i) => (

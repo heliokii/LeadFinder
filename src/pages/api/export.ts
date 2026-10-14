@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma, ensureDb } from "@/lib/db";
 
-function csvEscape(val: unknown): string {
+export function csvEscape(val: unknown): string {
   const s = val == null ? "" : String(val);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  const safe = /^[=+\-@]/.test(s) ? `'${s}` : s;
+  return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

@@ -50,7 +50,12 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const minInterval = Number(process.env.OSM_MIN_REQUEST_INTERVAL_MS ?? 1200);
+export function normalizeRateLimitInterval(raw: string | undefined): number {
+  const configured = Number(raw ?? 1200);
+  return Number.isFinite(configured) && configured >= 0 ? configured : 1200;
+}
+
+const minInterval = normalizeRateLimitInterval(process.env.OSM_MIN_REQUEST_INTERVAL_MS);
 
 // Shared limiter for every outgoing OSM request in this process.
 export const osmRateLimiter = new RateLimiter(minInterval);

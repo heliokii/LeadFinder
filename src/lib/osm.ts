@@ -51,7 +51,7 @@ export interface RawOsmBusiness {
 
 function userAgentHeaders() {
   const ua = process.env.OSM_USER_AGENT;
-  if (!ua || ua.includes("you@example.com")) {
+  if (!ua || /you@example\.com|your-email@your-domain\.com/i.test(ua)) {
     // Not fatal, but both services can and will block generic/default
     // User-Agents. Fail loudly in dev so this gets fixed before it
     // causes silent empty results.

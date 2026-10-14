@@ -55,11 +55,10 @@ two free-tier alternatives worth adding later:
 
 Both would slot into `src/lib/osm.ts`'s `searchBusinesses` shape.
 
-**Personal-only.** No auth system, no multi-tenant anything — this is meant
-to run on `localhost` on your own machine. `APP_ACCESS_CODE` in `.env` is
-there only if you ever expose it beyond localhost (e.g. tunneled to check
-leads from your phone); it isn't wired to page-level auth by default —
-see "Extending" below if you do that.
+**Personal-only.** There is no multi-tenant system — this is meant to run on
+`localhost` on your own machine. If `APP_ACCESS_CODE` is set, the included
+`middleware.ts` requires HTTP Basic Auth for every page and API route. Vercel
+deployments fail closed with HTTP 503 until that secret is configured.
 
 **Payment.** PayPal, Wise, and Payoneer don't offer a simple public
 "generate a payment request" API for a personal/solo account — the real
@@ -153,6 +152,9 @@ nothing in the current code expects one.
   for missing phone/hours/address and placeholder-like names.
 - `tests/draftGenerator.test.ts` — `ULTRA_SHORT` stays ≤300 chars, every
   variant includes the opt-out line, all 3 variants are generated.
+- `tests/workflow.test.ts`, `tests/payment.test.ts`, `tests/export.test.ts`,
+  and `tests/rateLimiter.test.ts` — status gates, payment input sanitization,
+  spreadsheet-safe CSV values, and invalid rate-limit configuration.
 - `tests/mocks/overpass-response.json` — a captured-shape Overpass
   response (one no-website listing, one with a site, one unnamed node
   that should be filtered out) for exercising `mapElement()` without
@@ -172,5 +174,5 @@ personal use.
   transition manual-triggered from the UI, but have that button call a new
   `/api/drafts/[id]/send` route that actually sends, instead of just
   flipping status — the DNC gate in that handler carries over unchanged.
-- **Basic auth if exposed beyond localhost**: check `APP_ACCESS_CODE`
-  against a header in a small `middleware.ts`.
+- **Permanent hosted storage**: replace the ephemeral Vercel SQLite file with
+  Postgres (Supabase/Neon/Prisma Postgres).
