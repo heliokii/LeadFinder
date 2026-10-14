@@ -108,25 +108,48 @@ export async function searchBusinesses(params: {
   category: BusinessCategory;
   keywords?: string;
 }): Promise<RawOsmBusiness[]> {
-  const endpoint = process.env.OVERPASS_ENDPOINT ?? "https://overpass-api.de/api/interpreter";
   const radiusM = Math.round(params.radiusKm * 1000);
   const tags = CATEGORY_TAGS[params.category];
   const query = buildOverpassQuery(params.lat, params.lon, radiusM, tags);
 
-  const data = await osmRateLimiter.schedule(async () => {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        ...userAgentHeaders(),
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: `data=${encodeURIComponent(query)}`,
-    });
-    if (!res.ok) {
-      throw new Error(`Overpass query failed: ${res.status} ${await res.text()}`);
+  const endpoints = overpassEndpoints();
+  let lastError = "unknown error";
+  let data: { elements: OverpassElement[] } | undefined;
+
+  for (const endpoint of endpoints) {
+    try {
+      data = await osmRateLimiter.schedule(async () => {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            ...userAgentHeaders(),
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: `data=${encodeURIComponent(query)}`,
+          signal: AbortSignal.timeout(overpassTimeoutMs()),
+        });
+        if (!res.ok) {
+          const detail = (await res.text()).replace(/\s+/g, " ").trim().slice(0, 240);
+          const error = new Error(`HTTP ${res.status}${detail ? `: ${detail}` : ""}`);
+          if (isRetryableOverpassStatus(res.status)) {
+            throw error;
+          }
+          throw Object.assign(error, { retryable: false });
+        }
+        return (await res.json()) as { elements: OverpassElement[] };
+      });
+      break;
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : "unknown error";
+      if (err && typeof err === "object" && "retryable" in err && err.retryable === false) break;
     }
-    return (await res.json()) as { elements: OverpassElement[] };
-  });
+  }
+
+  if (!data) {
+    throw new Error(
+      `Overpass is temporarily unavailable after ${endpoints.length} endpoint attempt${endpoints.length === 1 ? "" : "s"} (${lastError}). Try a smaller radius or retry in a moment.`
+    );
+  }
 
   const businesses = data.elements
     .map((el) => mapElement(el, params.category))
@@ -138,6 +161,27 @@ export async function searchBusinesses(params: {
   return businesses.filter(
     (b) => b.name.toLowerCase().includes(kw) || (b.address ?? "").toLowerCase().includes(kw)
   );
+}
+
+function overpassEndpoints(): string[] {
+  const configured = (process.env.OVERPASS_ENDPOINTS ?? "")
+    .split(",")
+    .map((endpoint) => endpoint.trim())
+    .filter(Boolean);
+  const primary = process.env.OVERPASS_ENDPOINT ?? "https://overpass-api.de/api/interpreter";
+  const fallbacks = configured.length
+    ? configured
+    : ["https://overpass.kumi.systems/api/interpreter"];
+  return [...new Set([primary, ...fallbacks])];
+}
+
+function overpassTimeoutMs(): number {
+  const value = Number(process.env.OVERPASS_REQUEST_TIMEOUT_MS ?? 35000);
+  return Number.isFinite(value) && value >= 1000 ? value : 35000;
+}
+
+function isRetryableOverpassStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500;
 }
 
 export interface OverpassElement {

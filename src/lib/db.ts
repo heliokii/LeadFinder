@@ -55,7 +55,11 @@ export function ensureDb(): Promise<void> {
         `CREATE INDEX IF NOT EXISTS "Lead_category_idx" ON "Lead"("category")`,
         `CREATE INDEX IF NOT EXISTS "Lead_phoneNormalized_idx" ON "Lead"("phoneNormalized")`,
         `CREATE TABLE IF NOT EXISTS "Draft" ("id" TEXT NOT NULL PRIMARY KEY, "leadId" TEXT NOT NULL, "variant" TEXT NOT NULL, "channel" TEXT NOT NULL, "content" TEXT NOT NULL, "status" TEXT NOT NULL DEFAULT 'DRAFT', "approvedAt" DATETIME, "sentAt" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "Draft_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead" ("id") ON DELETE CASCADE ON UPDATE CASCADE)`,
-        `ALTER TABLE "Draft" ADD COLUMN "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+        // SQLite only allows constant defaults when adding a column. Existing
+        // drafts get a valid timestamp value; newly created drafts use Prisma's
+        // normal @updatedAt behavior.
+        `ALTER TABLE "Draft" ADD COLUMN "updatedAt" DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00'`,
+        `UPDATE "Draft" SET "updatedAt" = "createdAt" WHERE "updatedAt" = '1970-01-01 00:00:00'`,
         `CREATE INDEX IF NOT EXISTS "Draft_leadId_idx" ON "Draft"("leadId")`,
         `CREATE INDEX IF NOT EXISTS "Draft_status_idx" ON "Draft"("status")`,
         `CREATE TABLE IF NOT EXISTS "FollowUp" ("id" TEXT NOT NULL PRIMARY KEY, "leadId" TEXT NOT NULL, "dueAt" DATETIME NOT NULL, "note" TEXT NOT NULL, "completedAt" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "FollowUp_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead" ("id") ON DELETE CASCADE ON UPDATE CASCADE)`,

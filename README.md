@@ -50,6 +50,10 @@ Both are documented, public APIs — this calls them the way they're meant to
 be called, not by scraping Google's map tiles or HTML (which the original
 brief already correctly ruled out).
 
+Overpass can return temporary 429/5xx responses when a public instance is
+busy. Searches retry configured mirrors (`OVERPASS_ENDPOINTS`) and return a
+short retry/smaller-radius message if every endpoint is unavailable.
+
 **Trade-off to know about:** OSM has no star ratings or review counts, and
 tag completeness varies a lot by area — a business might exist on the map
 but have no phone or hours filled in. `scoreLead()` in `src/lib/scoring.ts`
