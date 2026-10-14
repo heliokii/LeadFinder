@@ -50,6 +50,23 @@ const NEXT: Record<string, string | null> = {
   DNC: null,
 };
 
+function formatAppDate(value: string) {
+  return new Date(value)
+    .toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+    .replace(",", " ·");
+}
+
+function formatEventType(value: string) {
+  return value.replaceAll("_", " ");
+}
+
 export default function LeadDetailPage() {
   const router = useRouter();
   const id = router.query.id as string | undefined;
@@ -358,8 +375,8 @@ export default function LeadDetailPage() {
       <h2>Follow-ups</h2>
       <form className="card stack follow-up-form" onSubmit={createFollowUp}>
         <div className="row">
-          <div><label htmlFor="follow-up-due">Due</label><input id="follow-up-due" type="datetime-local" value={followUpDueAt} onChange={(e) => setFollowUpDueAt(e.target.value)} required /></div>
-          <div><label htmlFor="follow-up-note">Note</label><input id="follow-up-note" value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)} maxLength={500} required placeholder="Call back about proposal" /></div>
+          <div className="follow-up-field follow-up-date-field"><label htmlFor="follow-up-due">Due date &amp; time</label><input id="follow-up-due" type="datetime-local" value={followUpDueAt} onChange={(e) => setFollowUpDueAt(e.target.value)} required /></div>
+          <div className="follow-up-field"><label htmlFor="follow-up-note">Note</label><input id="follow-up-note" value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)} maxLength={500} required placeholder="Call back about proposal" /></div>
         </div>
         <button className="follow-up-submit" type="submit" disabled={busy !== null}>
           {busy === "followup" && <span className="spin" aria-hidden="true" />}
@@ -370,7 +387,7 @@ export default function LeadDetailPage() {
         {lead.followUps.map((followUp) => (
           <article className={`card follow-up-item${followUp.completedAt ? " is-complete" : ""}`} key={followUp.id}>
             <div className="follow-up-copy">
-              <strong>{new Date(followUp.dueAt).toLocaleString()}</strong>
+              <strong className="follow-up-date">{formatAppDate(followUp.dueAt)}</strong>
               <span className="muted">{followUp.note}</span>
             </div>
             <div className="follow-up-actions">
@@ -385,9 +402,14 @@ export default function LeadDetailPage() {
       <ol className="activity-list" aria-label="Activity timeline">
         {lead.events.map((event) => (
           <li className="activity-row" key={event.id}>
-            <time dateTime={event.createdAt}>{new Date(event.createdAt).toLocaleString()}</time>
-            <span className="activity-type">{event.type}</span>
-            {event.message ? <span className="activity-message">{event.message}</span> : null}
+            <span className="activity-marker" aria-hidden="true" />
+            <div className="activity-entry">
+              <div className="activity-meta">
+                <time dateTime={event.createdAt}>{formatAppDate(event.createdAt)}</time>
+                <span className="activity-type">{formatEventType(event.type)}</span>
+              </div>
+              {event.message ? <p className="activity-message">{event.message}</p> : null}
+            </div>
           </li>
         ))}
       </ol>
