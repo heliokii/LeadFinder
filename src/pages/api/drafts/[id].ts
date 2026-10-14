@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (status === undefined && content === undefined) {
     return res.status(400).json({ error: "Provide status or content" });
   }
-  if (!VALID_STATUSES.includes(status)) {
+  if (status !== undefined && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of ${VALID_STATUSES.join(", ")}` });
   }
 

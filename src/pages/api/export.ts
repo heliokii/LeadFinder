@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma, ensureDb } from "@/lib/db";
+import { prisma, ensureDb, safeEvent } from "@/lib/db";
 
 export function csvEscape(val: unknown): string {
   const s = val == null ? "" : String(val);
@@ -55,6 +55,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .join(",")
   );
   const csv = [header.join(","), ...rows].join("\n");
+
+  await safeEvent({ type: "EXPORT", message: `${leads.length} leads exported` });
 
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", "attachment; filename=leads.csv");

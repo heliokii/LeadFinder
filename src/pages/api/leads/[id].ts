@@ -65,9 +65,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Not found" });
     }
 
-    if (status) {
+    if (status || notes !== undefined) {
       await safeEvent({
-        leadId: id, type: "STATUS_CHANGE", message: `-> ${status}`,
+        leadId: id,
+        type: status ? "STATUS_CHANGE" : "LEAD_UPDATED",
+        message: status ? `-> ${status}` : "notes updated",
       });
     }
 

@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma, ensureDb } from "@/lib/db";
+import { prisma, ensureDb, safeEvent } from "@/lib/db";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).json({ error: "Use GET" });
@@ -43,6 +43,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         : { score: "desc" },
     include: { drafts: { select: { id: true, status: true, variant: true } } },
   });
+
+  await safeEvent({ type: "LEADS_VIEWED", message: `${leads.length} leads${status ? ` status=${status}` : ""}${category ? ` category=${category}` : ""}` });
 
   return res.status(200).json({ leads });
 }

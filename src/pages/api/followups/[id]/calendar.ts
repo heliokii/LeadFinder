@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma, ensureDb } from "@/lib/db";
+import { prisma, ensureDb, safeEvent } from "@/lib/db";
 import { buildFollowUpIcs } from "@/lib/followUps";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -12,6 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!followUp) return res.status(404).json({ error: "Follow-up not found" });
     res.setHeader("Content-Type", "text/calendar; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="follow-up-${id}.ics"`);
+    await safeEvent({ leadId: followUp.leadId, type: "FOLLOW_UP_CALENDAR_EXPORTED", message: followUp.note });
     return res.status(200).send(buildFollowUpIcs({ ...followUp, leadName: followUp.lead.name }));
   } catch (err) {
     return res.status(500).json({ error: err instanceof Error ? err.message : "Could not create calendar event" });

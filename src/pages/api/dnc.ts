@@ -12,6 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "GET") {
     const entries = await prisma.doNotContact.findMany({ orderBy: { createdAt: "desc" } });
+    await safeEvent({ type: "DNC_VIEWED", message: `${entries.length} entries` });
     return res.status(200).json({ entries });
   }
 
