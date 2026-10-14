@@ -55,6 +55,9 @@ code, .mono, td.mono, .field-value {
 }
 
 .lead-map { height: 520px; width: 100%; border: 1px solid var(--line); z-index: 1; }
+.map-status-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 12px; }
+.map-status-key { display: inline-flex; align-items: center; gap: 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.68rem; letter-spacing: 0.04em; color: var(--muted); }
+.map-status-swatch { width: 10px; height: 10px; border: 1px solid rgba(0, 0, 0, 0.22); border-radius: 50%; flex: none; }
 
 @keyframes rise {
   from { opacity: 0; transform: translateY(14px); }
