@@ -5,6 +5,7 @@ import { CATEGORY_CATALOG } from "@/lib/categories";
 export default function SettingsPage() {
   const [mode, setMode] = useState<"merge" | "replace">("merge");
   const [busy, setBusy] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
   async function importBackup(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -47,10 +48,13 @@ export default function SettingsPage() {
         <div className="table-wrap">
         <table>
           <tbody>
-            {CATEGORY_CATALOG.map((item) => <tr key={item.value}><td>{item.label}</td><td className="mono">{item.tags.join(" · ")}</td></tr>)}
+            {(showAllCategories ? CATEGORY_CATALOG : CATEGORY_CATALOG.slice(0, 12)).map((item) => <tr key={item.value}><td>{item.label}</td><td className="mono">{item.tags.join(" · ")}</td></tr>)}
           </tbody>
         </table>
         </div>
+        <button className="secondary category-toggle" type="button" onClick={() => setShowAllCategories((value) => !value)} aria-expanded={showAllCategories}>
+          {showAllCategories ? "Show fewer categories" : `Show all ${CATEGORY_CATALOG.length} categories`}
+        </button>
 
         <h2>Payment links (shown when a lead is marked WON)</h2>
         <p className="muted">

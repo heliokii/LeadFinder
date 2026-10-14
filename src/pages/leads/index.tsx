@@ -23,6 +23,7 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [status, setStatus] = useState("");
   const [category, setCategory] = useState("");
+  const [categoryReady, setCategoryReady] = useState(false);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("");
   const [minScore, setMinScore] = useState("");
@@ -59,8 +60,16 @@ export default function LeadsPage() {
   }, [status, category, sort, minScore, maxScore, hasPhone, hasAddress]);
 
   useEffect(() => {
+    if (!router.isReady) return;
+    const requestedCategory = typeof router.query.category === "string" ? router.query.category : "";
+    setCategory(CATEGORY_CATALOG.some((item) => item.value === requestedCategory) ? requestedCategory : "");
+    setCategoryReady(true);
+  }, [router.isReady, router.query.category]);
+
+  useEffect(() => {
+    if (!router.isReady || !categoryReady) return;
     void load();
-  }, [load]);
+  }, [router.isReady, categoryReady, load]);
 
   useReveal(leads.length);
 

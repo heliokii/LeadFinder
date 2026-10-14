@@ -13,4 +13,9 @@ describe("category catalog", () => {
     expect(new Set(CATEGORY_VALUES).size).toBe(CATEGORY_CATALOG.length);
     expect(CATEGORY_CATALOG.every((category) => category.tags.length > 0 && category.aliases.length > 0)).toBe(true);
   });
+
+  it("keeps the catalog alphabetized for pickers", () => {
+    const labels = CATEGORY_CATALOG.map((category) => category.label);
+    expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })));
+  });
 });

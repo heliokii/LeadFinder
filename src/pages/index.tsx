@@ -195,7 +195,7 @@ export default function SearchPage() {
             <strong>{result.noWebsiteCount}</strong> with no working website saved as leads (
             {result.skippedHasWebsiteCount} already had a site).
           </p>
-          <button className="secondary" onClick={() => router.push("/leads")}>
+          <button className="secondary" onClick={() => router.push(`/leads?category=${encodeURIComponent(category)}`)}>
             View leads <span className="arrow" aria-hidden="true">→</span>
           </button>
         </div>

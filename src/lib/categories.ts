@@ -1,4 +1,4 @@
-export const CATEGORY_CATALOG = [
+const CATEGORY_CATALOG_UNSORTED = [
   { value: "dentist", label: "Dentist", hint: "amenity=dentist", aliases: ["dental", "dentists"], tags: ["amenity=dentist", "healthcare=dentist"], copyLabel: "dental practice", suggestions: ["an online booking page", "a mobile-friendly services page", "a map/location button"] },
   { value: "doctor", label: "Doctor", hint: "amenity=doctors", aliases: ["clinic", "medical"], tags: ["amenity=doctors", "healthcare=doctor"], copyLabel: "medical practice", suggestions: ["an appointment booking page", "a services page", "a map/location button"] },
   { value: "pharmacy", label: "Pharmacy", hint: "amenity=pharmacy", aliases: ["drugstore"], tags: ["amenity=pharmacy", "healthcare=pharmacy"], copyLabel: "pharmacy", suggestions: ["a prescription information page", "store hours and services", "a map/location button"] },
@@ -65,7 +65,10 @@ export const CATEGORY_CATALOG = [
   { value: "coworking", label: "Coworking space", hint: "office=coworking", aliases: ["shared office", "workspace"], tags: ["office=coworking"], copyLabel: "coworking space", suggestions: ["a workspace and amenities page", "a tour booking form", "a map/location button"] },
 ] as const;
 
-export type BusinessCategory = (typeof CATEGORY_CATALOG)[number]["value"];
+type CategoryEntry = (typeof CATEGORY_CATALOG_UNSORTED)[number];
+export const CATEGORY_CATALOG: readonly CategoryEntry[] = [...CATEGORY_CATALOG_UNSORTED].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+
+export type BusinessCategory = CategoryEntry["value"];
 export const CATEGORY_VALUES = CATEGORY_CATALOG.map((category) => category.value) as BusinessCategory[];
 
 export function getCategory(value: string) {
